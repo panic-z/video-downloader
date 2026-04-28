@@ -24,14 +24,20 @@ export async function POST(request: Request) {
   const extension = typeof body.extension === "string" ? body.extension : null;
   const job = jobStore.create({ title });
 
-  startDownload({
-    job,
-    url: parsed.url,
-    formatId: body.formatId,
-    extension,
-    downloadDir: path.join(process.cwd(), "downloads"),
-    store: jobStore
-  });
+  try {
+    startDownload({
+      job,
+      url: parsed.url,
+      formatId: body.formatId,
+      extension,
+      downloadDir: path.join(process.cwd(), "downloads"),
+      store: jobStore
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to start download.";
+    jobStore.update(job.jobId, { status: "failed", error: message });
+    return jsonError(`Failed to start download: ${message}`, 500);
+  }
 
   return NextResponse.json({ jobId: job.jobId, status: job.status });
 }
