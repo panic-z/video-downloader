@@ -8,7 +8,7 @@
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "next lint"
+    "lint": "tsc --noEmit --ignoreDeprecations 6.0"
   },
   "dependencies": {
     "next": "latest",
