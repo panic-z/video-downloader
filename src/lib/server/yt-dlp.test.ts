@@ -1,0 +1,48 @@
+import { describe, expect, it, vi } from "vitest";
+import { buildDownloadArgs, fetchVideoInfo } from "./yt-dlp";
+
+describe("fetchVideoInfo", () => {
+  it("calls yt-dlp with JSON metadata arguments", async () => {
+    const run = vi.fn().mockResolvedValue({
+      stdout: JSON.stringify({
+        id: "id",
+        title: "Title",
+        webpage_url: "https://youtu.be/id",
+        formats: []
+      }),
+      stderr: ""
+    });
+
+    await expect(fetchVideoInfo("https://youtu.be/id", run)).resolves.toMatchObject({
+      video: { id: "id", title: "Title" }
+    });
+    expect(run).toHaveBeenCalledWith("yt-dlp", ["--dump-single-json", "--no-playlist", "https://youtu.be/id"]);
+  });
+
+  it("throws a readable error for invalid JSON", async () => {
+    const run = vi.fn().mockResolvedValue({ stdout: "not json", stderr: "" });
+    await expect(fetchVideoInfo("https://youtu.be/id", run)).rejects.toThrow("yt-dlp returned invalid JSON");
+  });
+});
+
+describe("buildDownloadArgs", () => {
+  it("builds deterministic download arguments", () => {
+    expect(
+      buildDownloadArgs({
+        url: "https://youtu.be/id",
+        formatId: "18",
+        outputTemplate: "downloads/file.%(ext)s"
+      })
+    ).toEqual([
+      "--newline",
+      "--no-playlist",
+      "-f",
+      "18",
+      "--merge-output-format",
+      "mp4",
+      "-o",
+      "downloads/file.%(ext)s",
+      "https://youtu.be/id"
+    ]);
+  });
+});
