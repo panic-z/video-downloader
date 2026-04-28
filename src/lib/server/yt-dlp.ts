@@ -7,15 +7,18 @@ export async function fetchVideoInfo(
   run: CommandRunner = defaultCommandRunner
 ): Promise<AnalyzeResult> {
   const { stdout } = await run("yt-dlp", ["--dump-single-json", "--no-playlist", url]);
+  let parsed: unknown;
 
   try {
-    return normalizeYtDlpInfo(JSON.parse(stdout));
+    parsed = JSON.parse(stdout);
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error("yt-dlp returned invalid JSON");
     }
     throw error;
   }
+
+  return normalizeYtDlpInfo(parsed);
 }
 
 export function buildDownloadArgs(input: {
