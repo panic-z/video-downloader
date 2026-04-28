@@ -10,25 +10,161 @@ body {
 }
 
 button,
-input,
-select {
+input {
   font: inherit;
 }
 
 .shell {
   min-height: 100vh;
-  padding: 32px;
+  padding: 28px;
+}
+
+.hero {
+  max-width: 1120px;
+  margin: 0 auto 18px;
+}
+
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: 34px;
+}
+
+.hero p,
+.muted {
+  color: #647087;
+}
+
+.workspace {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .panel {
-  max-width: 1120px;
-  margin: 0 auto;
   background: #ffffff;
   border: 1px solid #dce3ee;
   border-radius: 8px;
-  padding: 24px;
+  padding: 18px;
 }
 
-.muted {
+.panel:first-child,
+.panel:last-child {
+  grid-column: 1 / -1;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field span,
+.panelHeader h2,
+.panel h2 {
+  margin: 0;
+}
+
+.field input {
+  width: 100%;
+  border: 1px solid #bfc9d8;
+  border-radius: 6px;
+  padding: 11px 12px;
+}
+
+.primary,
+.downloadLink {
+  border: 0;
+  border-radius: 6px;
+  background: #1f6feb;
+  color: #ffffff;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.panel > .primary {
+  margin-top: 12px;
+}
+
+.error {
+  color: #b42318;
+}
+
+.summary {
+  border-top: 1px solid #e7ecf3;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.formatList,
+.jobList {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.formatRow,
+.job {
+  border: 1px solid #dce3ee;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.formatRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.formatRow small,
+.job p {
   color: #647087;
+}
+
+.job {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    padding: 18px;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHeader,
+  .job {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formatRow {
+    grid-template-columns: auto 1fr;
+  }
+
+  .formatRow small {
+    grid-column: 2;
+  }
 }
