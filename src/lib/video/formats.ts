@@ -30,7 +30,7 @@ function sourceFromWebpageUrl(value: unknown): VideoSource {
   }
 }
 
-function labelFor(format: Omit<VideoFormat, "label">): string {
+function labelFor(format: Omit<VideoFormat, "downloadSelector" | "label">): string {
   const quality = format.height ? `${format.height}p` : format.hasVideo ? "unknown" : "audio";
   const ext = format.extension ?? "unknown";
   const media =
@@ -53,7 +53,8 @@ function normalizeFormat(raw: unknown): VideoFormat | null {
   const sizeBytes = numberOrNull(raw.filesize) ?? numberOrNull(raw.filesize_approx);
 
   const normalized = { id, height, extension, hasVideo, hasAudio, sizeBytes };
-  return { ...normalized, label: labelFor(normalized) };
+  const downloadSelector = hasVideo && !hasAudio ? `${id}+bestaudio/best` : id;
+  return { ...normalized, downloadSelector, label: labelFor(normalized) };
 }
 
 export function normalizeYtDlpInfo(rawInfo: unknown): AnalyzeResult {

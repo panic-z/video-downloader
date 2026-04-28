@@ -1,5 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
-import { checkBinary, checkDependencies } from "./dependencies";
+
+const { execFile } = vi.hoisted(() => ({
+  execFile: vi.fn()
+}));
+
+vi.mock("node:child_process", () => ({
+  default: {
+    execFile
+  },
+  execFile
+}));
+
+import { checkBinary, checkDependencies, defaultCommandRunner } from "./dependencies";
 
 describe("checkBinary", () => {
   it("returns available true when command exits successfully", async () => {
@@ -28,5 +40,29 @@ describe("checkDependencies", () => {
     const run = vi.fn().mockResolvedValue({ stdout: "version", stderr: "" });
     const result = await checkDependencies(run);
     expect(result.map((item) => item.name)).toEqual(["yt-dlp", "ffmpeg"]);
+  });
+});
+
+describe("defaultCommandRunner", () => {
+  it("uses a large stdout buffer for metadata commands", async () => {
+    execFile.mockImplementationOnce((_command, _args, _options, callback) => {
+      if (typeof _options === "function") {
+        _options(null, { stdout: "{}", stderr: "" });
+        return;
+      }
+      callback(null, { stdout: "{}", stderr: "" });
+    });
+
+    await expect(defaultCommandRunner("yt-dlp", ["--dump-single-json", "https://youtu.be/id"])).resolves.toEqual({
+      stdout: "{}",
+      stderr: ""
+    });
+
+    expect(execFile).toHaveBeenCalledWith(
+      "yt-dlp",
+      ["--dump-single-json", "https://youtu.be/id"],
+      expect.objectContaining({ maxBuffer: 25 * 1024 * 1024 }),
+      expect.any(Function)
+    );
   });
 });

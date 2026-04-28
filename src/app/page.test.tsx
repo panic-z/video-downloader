@@ -26,16 +26,52 @@ const analysisResult = {
   },
   formats: [
     {
-      id: "mp4-720",
-      label: "720p MP4",
-      height: 720,
+      id: "137",
+      downloadSelector: "137+bestaudio/best",
+      label: "1080p mp4 video",
+      height: 1080,
+      extension: "mp4",
+      hasVideo: true,
+      hasAudio: false,
+      sizeBytes: 20971520
+    },
+    {
+      id: "18",
+      downloadSelector: "18",
+      label: "360p mp4 video+audio",
+      height: 360,
       extension: "mp4",
       hasVideo: true,
       hasAudio: true,
       sizeBytes: 10485760
+    },
+    {
+      id: "140",
+      downloadSelector: "140",
+      label: "audio m4a audio",
+      height: null,
+      extension: "m4a",
+      hasVideo: false,
+      hasAudio: true,
+      sizeBytes: null
     }
   ]
 };
+
+const healthyDependencies = {
+  dependencies: [
+    { name: "yt-dlp", available: true },
+    { name: "ffmpeg", available: true }
+  ]
+};
+
+function mockFetchWithHealth(...responses: Response[]) {
+  const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(jsonResponse(healthyDependencies));
+  for (const response of responses) {
+    fetchMock.mockResolvedValueOnce(response);
+  }
+  return fetchMock;
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -44,6 +80,8 @@ afterEach(() => {
 
 describe("HomePage", () => {
   it("renders the URL form and format area", () => {
+    mockFetchWithHealth();
+
     render(<HomePage />);
     expect(screen.getByRole("heading", { name: "Video Downloader" })).toBeInTheDocument();
     expect(screen.getByLabelText("Video URL")).toBeInTheDocument();
@@ -53,7 +91,7 @@ describe("HomePage", () => {
   });
 
   it("renders video details and formats after a successful analyze request", async () => {
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse(analysisResult));
+    const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
     const user = userEvent.setup();
 
     render(<HomePage />);
@@ -61,8 +99,8 @@ describe("HomePage", () => {
     await user.click(screen.getByRole("button", { name: "Analyze" }));
 
     expect(await screen.findByRole("heading", { name: "A very long demo video title" })).toBeInTheDocument();
-    expect(screen.getByText("720p MP4")).toBeInTheDocument();
-    expect(screen.getByText("10 MB")).toBeInTheDocument();
+    expect(screen.getByText("1080p mp4 video")).toBeInTheDocument();
+    expect(screen.getByText("20 MB")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -71,7 +109,7 @@ describe("HomePage", () => {
   });
 
   it("shows a clear analyze error and clears busy state for invalid JSON responses", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(invalidJsonResponse(false));
+    mockFetchWithHealth(invalidJsonResponse(false));
     const user = userEvent.setup();
 
     render(<HomePage />);
@@ -83,7 +121,7 @@ describe("HomePage", () => {
   });
 
   it("shows an explicit message when analysis returns no formats", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    mockFetchWithHealth(
       jsonResponse({
         ...analysisResult,
         formats: []
@@ -104,16 +142,16 @@ describe("HomePage", () => {
   });
 
   it("starts a download for the selected format", async () => {
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(jsonResponse(analysisResult))
-      .mockResolvedValueOnce(jsonResponse({ jobId: "job-1", status: "queued" }));
+    const fetchMock = mockFetchWithHealth(
+      jsonResponse(analysisResult),
+      jsonResponse({ jobId: "job-1", status: "queued" })
+    );
     const user = userEvent.setup();
 
     render(<HomePage />);
     await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
     await user.click(screen.getByRole("button", { name: "Analyze" }));
-    await screen.findByText("720p MP4");
+    await screen.findByText("1080p mp4 video");
     await user.click(screen.getByRole("button", { name: "Download selected format" }));
 
     expect(await screen.findByText("queued · 0%")).toBeInTheDocument();
@@ -122,7 +160,7 @@ describe("HomePage", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         url: "https://example.com/watch?v=1",
-        formatId: "mp4-720",
+        formatId: "137+bestaudio/best",
         title: "A very long demo video title",
         extension: "mp4"
       })
@@ -130,39 +168,59 @@ describe("HomePage", () => {
   });
 
   it("shows a clear download error and clears busy state when starting a download fails", async () => {
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(jsonResponse(analysisResult))
-      .mockRejectedValueOnce(new Error("Network error"));
+    const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
+    fetchMock.mockRejectedValueOnce(new Error("Network error"));
     const user = userEvent.setup();
 
     render(<HomePage />);
     await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
     await user.click(screen.getByRole("button", { name: "Analyze" }));
-    await screen.findByText("720p MP4");
+    await screen.findByText("1080p mp4 video");
     await user.click(screen.getByRole("button", { name: "Download selected format" }));
 
     expect(await screen.findByText("Failed to start download.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download selected format" })).toBeEnabled();
   });
 
-  it("polls active downloads until completion and keeps terminal jobs idle", async () => {
-    vi.useFakeTimers();
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(jsonResponse(analysisResult))
-      .mockResolvedValueOnce(jsonResponse({ jobId: "job-1", status: "queued" }))
-      .mockResolvedValueOnce(
-        jsonResponse({
-          jobId: "job-1",
-          status: "completed",
-          progress: 100,
-          title: "A very long demo video title",
-          fileName: "demo.mp4",
-          error: null
-        })
-      );
+  it("disables analyze when yt-dlp is unavailable", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      jsonResponse({
+        dependencies: [
+          { name: "yt-dlp", available: false, error: "not found" },
+          { name: "ffmpeg", available: true }
+        ]
+      })
+    );
+    const user = userEvent.setup();
 
     render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
+
+    expect(
+      await screen.findByText("Missing dependency: yt-dlp. Install yt-dlp and ffmpeg to enable downloads.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
+  });
+
+  it("polls active downloads until completion and keeps terminal jobs idle", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockFetchWithHealth(
+      jsonResponse(analysisResult),
+      jsonResponse({ jobId: "job-1", status: "queued" }),
+      jsonResponse({
+        jobId: "job-1",
+        status: "completed",
+        progress: 100,
+        title: "A very long demo video title",
+        fileName: "demo.mp4",
+        error: null
+      })
+    );
+
+    render(<HomePage />);
+    await act(async () => {
+      await Promise.resolve();
+    });
     fireEvent.change(screen.getByLabelText("Video URL"), {
       target: { value: "https://example.com/watch?v=1" }
     });
@@ -170,7 +228,7 @@ describe("HomePage", () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(screen.getByText("720p MP4")).toBeInTheDocument();
+    expect(screen.getByText("1080p mp4 video")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Download selected format" }));
     await act(async () => {
       await Promise.resolve();
@@ -188,6 +246,6 @@ describe("HomePage", () => {
       await vi.advanceTimersByTimeAsync(3000);
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 });

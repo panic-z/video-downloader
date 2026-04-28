@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { buildDownloadFileName } from "@/lib/video/filenames";
 import { parseDownloadProgress } from "@/lib/video/progress";
@@ -9,6 +9,32 @@ import { buildDownloadArgs } from "./yt-dlp";
 
 type JobStore = ReturnType<typeof createJobStore>;
 type SpawnFn = typeof nodeSpawn;
+
+function resolveCompletedOutput(downloadDir: string, outputStem: string, fallbackPath: string) {
+  try {
+    const match = readdirSync(downloadDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && path.parse(entry.name).name === outputStem)
+      .map((entry) => entry.name)
+      .sort()[0];
+
+    if (match) {
+      return {
+        fileName: match,
+        filePath: path.join(downloadDir, match)
+      };
+    }
+  } catch {
+    return {
+      fileName: path.basename(fallbackPath),
+      filePath: fallbackPath
+    };
+  }
+
+  return {
+    fileName: path.basename(fallbackPath),
+    filePath: fallbackPath
+  };
+}
 
 export function startDownload(input: {
   job: DownloadJob;
@@ -23,7 +49,8 @@ export function startDownload(input: {
   mkdirSync(input.downloadDir, { recursive: true });
 
   const baseName = buildDownloadFileName(input.job.title, input.job.jobId, input.extension);
-  const outputTemplate = path.join(input.downloadDir, baseName.replace(/\.[^.]+$/, ".%(ext)s"));
+  const outputStem = path.basename(baseName, path.extname(baseName));
+  const outputTemplate = path.join(input.downloadDir, `${outputStem}.%(ext)s`);
   const expectedPath = path.join(input.downloadDir, baseName);
   const args = buildDownloadArgs({
     url: input.url,
@@ -69,7 +96,8 @@ export function startDownload(input: {
 
   child.on("close", (code) => {
     if (code === 0) {
-      setTerminalState({ status: "completed", progress: 100 });
+      const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem, expectedPath);
+      setTerminalState({ status: "completed", progress: 100, ...completedOutput });
       return;
     }
 

@@ -44,6 +44,7 @@ describe("normalizeYtDlpInfo", () => {
     });
     expect(result.formats[0]).toMatchObject({
       id: "137",
+      downloadSelector: "137+bestaudio/best",
       label: "1080p mp4 video",
       height: 1080,
       extension: "mp4",
@@ -56,6 +57,21 @@ describe("normalizeYtDlpInfo", () => {
   it("prefers higher video formats before lower formats", () => {
     const result = normalizeYtDlpInfo(sample);
     expect(result.formats.map((format) => format.id)).toEqual(["137", "18", "140"]);
+  });
+
+  it("keeps radio ids separate from yt-dlp download selectors", () => {
+    const result = normalizeYtDlpInfo(sample);
+
+    expect(
+      result.formats.map((format) => ({
+        id: format.id,
+        downloadSelector: format.downloadSelector
+      }))
+    ).toEqual([
+      { id: "137", downloadSelector: "137+bestaudio/best" },
+      { id: "18", downloadSelector: "18" },
+      { id: "140", downloadSelector: "140" }
+    ]);
   });
 
   it("handles malformed top-level input and skips malformed format entries", () => {

@@ -2,6 +2,7 @@ export type VideoSource = "youtube" | "bilibili" | "other";
 
 export type VideoFormat = {
   id: string;
+  downloadSelector: string;
   label: string;
   height: number | null;
   extension: string | null;

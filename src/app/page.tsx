@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import type { AnalyzeResult, DownloadJob, VideoFormat } from "@/lib/video/types";
 
 type JobView = Pick<DownloadJob, "jobId" | "status" | "progress" | "title" | "fileName" | "error">;
+type DependencyView = {
+  name: string;
+  available: boolean;
+};
 
 async function readJson(response: Response) {
   try {
@@ -55,6 +59,24 @@ function isDownloadStart(data: unknown): data is Pick<JobView, "jobId" | "status
   );
 }
 
+function isHealthResult(data: unknown): data is { dependencies: DependencyView[] } {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "dependencies" in data &&
+      Array.isArray(data.dependencies) &&
+      data.dependencies.every(
+        (dependency) =>
+          dependency &&
+          typeof dependency === "object" &&
+          "name" in dependency &&
+          typeof dependency.name === "string" &&
+          "available" in dependency &&
+          typeof dependency.available === "boolean"
+      )
+  );
+}
+
 export default function HomePage() {
   const [url, setUrl] = useState("");
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
@@ -62,11 +84,15 @@ export default function HomePage() {
   const [jobs, setJobs] = useState<JobView[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [dependenciesReady, setDependenciesReady] = useState(false);
+  const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
 
   const selectedFormat = useMemo(
     () => analysis?.formats.find((format) => format.id === selectedFormatId) ?? null,
     [analysis, selectedFormatId]
   );
+
+  const actionsDisabled = busy || !dependenciesReady;
 
   async function analyze() {
     setBusy(true);
@@ -111,7 +137,7 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url,
-          formatId: selectedFormat.id,
+          formatId: selectedFormat.downloadSelector,
           title: analysis.video.title,
           extension: selectedFormat.extension
         })
@@ -145,6 +171,48 @@ export default function HomePage() {
       setBusy(false);
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkHealth() {
+      try {
+        const response = await fetch("/api/health");
+        const data = await readJson(response);
+        if (cancelled) return;
+
+        if (!response.ok || !isHealthResult(data)) {
+          setDependencyMessage("Could not verify downloader dependencies. Install yt-dlp and ffmpeg, then refresh.");
+          return;
+        }
+
+        const missing = data.dependencies
+          .filter((dependency) => !dependency.available)
+          .map((dependency) => dependency.name);
+
+        if (missing.length > 0) {
+          const label = missing.length === 1 ? "dependency" : "dependencies";
+          setDependencyMessage(
+            `Missing ${label}: ${missing.join(", ")}. Install yt-dlp and ffmpeg to enable downloads.`
+          );
+          return;
+        }
+
+        setDependencyMessage(null);
+        setDependenciesReady(true);
+      } catch {
+        if (!cancelled) {
+          setDependencyMessage("Could not verify downloader dependencies. Install yt-dlp and ffmpeg, then refresh.");
+        }
+      }
+    }
+
+    void checkHealth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const activeJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
@@ -186,9 +254,10 @@ export default function HomePage() {
             <span>Video URL</span>
             <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://www.bilibili.com/video/..." />
           </label>
-          <button className="primary" onClick={analyze} disabled={busy || !url.trim()}>
+          <button className="primary" onClick={analyze} disabled={actionsDisabled || !url.trim()}>
             Analyze
           </button>
+          {dependencyMessage ? <p className="error">{dependencyMessage}</p> : null}
           {message ? <p className="error">{message}</p> : null}
 
           {analysis ? (
@@ -202,7 +271,7 @@ export default function HomePage() {
         <div className="panel">
           <div className="panelHeader">
             <h2>Formats</h2>
-            <button className="primary" onClick={startSelectedDownload} disabled={!selectedFormat || busy}>
+            <button className="primary" onClick={startSelectedDownload} disabled={!selectedFormat || actionsDisabled}>
               Download selected format
             </button>
           </div>

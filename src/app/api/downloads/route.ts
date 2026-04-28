@@ -13,7 +13,12 @@ export async function POST(request: Request) {
     extension?: unknown;
   }>(request);
 
-  if (!body || typeof body.url !== "string" || typeof body.formatId !== "string") {
+  if (
+    !body ||
+    typeof body.url !== "string" ||
+    typeof body.formatId !== "string" ||
+    !body.formatId.trim()
+  ) {
     return jsonError("A video URL and format id are required.", 400);
   }
 
@@ -28,7 +33,7 @@ export async function POST(request: Request) {
     startDownload({
       job,
       url: parsed.url,
-      formatId: body.formatId,
+      formatId: body.formatId.trim(),
       extension,
       downloadDir: path.join(process.cwd(), "downloads"),
       store: jobStore

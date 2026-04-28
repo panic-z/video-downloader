@@ -49,6 +49,20 @@ describe("POST /api/downloads", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 for blank format ids", async () => {
+    const response = await POST(new Request("http://localhost/api/downloads", {
+      method: "POST",
+      body: JSON.stringify({ url: "https://youtu.be/id", formatId: "   " })
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "A video URL and format id are required."
+    });
+    expect(jobStore.create).not.toHaveBeenCalled();
+    expect(startDownload).not.toHaveBeenCalled();
+  });
+
   it("creates a queued job", async () => {
     const response = await POST(new Request("http://localhost/api/downloads", {
       method: "POST",

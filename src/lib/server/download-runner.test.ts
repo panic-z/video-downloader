@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startDownload } from "./download-runner";
 import { createJobStore } from "./job-store";
@@ -35,6 +38,38 @@ describe("startDownload", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(store.get(job.jobId)).toMatchObject({ status: "completed", progress: 100 });
+  });
+
+  it("updates completed jobs to the actual merged output file extension", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+    const downloadDir = mkdtempSync(path.join(tmpdir(), "video-downloader-"));
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "137+bestaudio/best",
+      extension: "webm",
+      downloadDir,
+      store,
+      spawn
+    });
+
+    const initialJob = store.get(job.jobId);
+    expect(initialJob?.fileName).toMatch(/^Title-job-[^.]+\.webm$/);
+    const outputStem = path.basename(initialJob?.fileName ?? "", ".webm");
+
+    writeFileSync(path.join(downloadDir, `${outputStem}.mp4`), "merged output");
+    proc.emit("close", 0);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(store.get(job.jobId)).toMatchObject({
+      status: "completed",
+      fileName: `${outputStem}.mp4`,
+      filePath: path.join(downloadDir, `${outputStem}.mp4`)
+    });
   });
 
   it("marks a job failed when the child exits with an error", async () => {

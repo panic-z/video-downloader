@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+const COMMAND_MAX_BUFFER_BYTES = 25 * 1024 * 1024;
+
 export type BinaryCheck = {
   name: "yt-dlp" | "ffmpeg";
   available: boolean;
@@ -15,7 +17,9 @@ export type CommandRunner = (
 const execFileAsync = promisify(execFile);
 
 export const defaultCommandRunner: CommandRunner = async (command, args) => {
-  const { stdout, stderr } = await execFileAsync(command, args);
+  const { stdout, stderr } = await execFileAsync(command, args, {
+    maxBuffer: COMMAND_MAX_BUFFER_BYTES
+  });
   return { stdout, stderr };
 };
 
