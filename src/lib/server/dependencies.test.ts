@@ -7,6 +7,12 @@ describe("checkBinary", () => {
     await expect(checkBinary("yt-dlp", run)).resolves.toEqual({ name: "yt-dlp", available: true });
   });
 
+  it("uses the ffmpeg version flag accepted by ffmpeg", async () => {
+    const run = vi.fn().mockResolvedValue({ stdout: "version", stderr: "" });
+    await checkBinary("ffmpeg", run);
+    expect(run).toHaveBeenCalledWith("ffmpeg", ["-version"]);
+  });
+
   it("returns available false when command rejects", async () => {
     const run = vi.fn().mockRejectedValue(new Error("missing"));
     await expect(checkBinary("ffmpeg", run)).resolves.toEqual({

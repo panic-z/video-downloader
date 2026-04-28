@@ -23,8 +23,10 @@ export async function checkBinary(
   name: BinaryCheck["name"],
   run: CommandRunner = defaultCommandRunner
 ): Promise<BinaryCheck> {
+  const versionArgs = name === "ffmpeg" ? ["-version"] : ["--version"];
+
   try {
-    await run(name, ["--version"]);
+    await run(name, versionArgs);
     return { name, available: true };
   } catch (error) {
     return {
