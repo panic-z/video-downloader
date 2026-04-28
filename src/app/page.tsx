@@ -93,9 +93,6 @@ export default function HomePage() {
 
       setAnalysis(data);
       setSelectedFormatId(data.formats[0]?.id ?? "");
-      if (data.formats.length === 0) {
-        setMessage("No downloadable formats found.");
-      }
     } catch {
       setMessage("Failed to analyze video.");
     } finally {
@@ -223,6 +220,9 @@ export default function HomePage() {
               </label>
             ))}
             {!analysis ? <p className="muted">Analyze a URL to see available formats.</p> : null}
+            {analysis && analysis.formats.length === 0 ? (
+              <p className="muted">No downloadable formats found.</p>
+            ) : null}
           </div>
         </div>
 

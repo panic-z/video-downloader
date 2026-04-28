@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import HomePage from "./page";
@@ -95,7 +95,11 @@ describe("HomePage", () => {
     await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
     await user.click(screen.getByRole("button", { name: "Analyze" }));
 
-    expect(await screen.findByText("No downloadable formats found.")).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "A very long demo video title" });
+    const formatsPanel = screen.getByRole("heading", { name: "Formats" }).closest(".panel");
+
+    expect(formatsPanel).not.toBeNull();
+    expect(within(formatsPanel as HTMLElement).getByText("No downloadable formats found.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
   });
 
