@@ -9,6 +9,13 @@ type RawInfo = {
   formats?: unknown;
 };
 
+type NormalizedFormat = Omit<VideoFormat, "label"> & {
+  baseLabel: string;
+  formatNote: string | null;
+  fps: number | null;
+  bitrateKbps: number | null;
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -30,7 +37,7 @@ function sourceFromWebpageUrl(value: unknown): VideoSource {
   }
 }
 
-function labelFor(format: Omit<VideoFormat, "downloadSelector" | "label">): string {
+function baseLabelFor(format: Omit<VideoFormat, "downloadSelector" | "label">): string {
   const quality = format.height ? `${format.height}p` : format.hasVideo ? "unknown" : "audio";
   const ext = format.extension ?? "unknown";
   const media =
@@ -38,7 +45,20 @@ function labelFor(format: Omit<VideoFormat, "downloadSelector" | "label">): stri
   return `${quality} ${ext} ${media}`;
 }
 
-function normalizeFormat(raw: unknown): VideoFormat | null {
+function disambiguatedLabel(format: NormalizedFormat, duplicateBaseLabels: Set<string>): string {
+  if (!duplicateBaseLabels.has(format.baseLabel)) return format.baseLabel;
+
+  const details = [
+    format.formatNote,
+    format.fps ? `${format.fps}fps` : null,
+    format.bitrateKbps ? `${Math.round(format.bitrateKbps)}kbps` : null,
+    `id ${format.id}`
+  ].filter((detail): detail is string => Boolean(detail));
+
+  return `${format.baseLabel} · ${details.join(" · ")}`;
+}
+
+function normalizeFormat(raw: unknown): NormalizedFormat | null {
   if (!isRecord(raw)) return null;
 
   const id = text(raw.format_id, "");
@@ -54,20 +74,44 @@ function normalizeFormat(raw: unknown): VideoFormat | null {
 
   const normalized = { id, height, extension, hasVideo, hasAudio, sizeBytes };
   const downloadSelector = hasVideo && !hasAudio ? `${id}+bestaudio/best` : id;
-  return { ...normalized, downloadSelector, label: labelFor(normalized) };
+  return {
+    ...normalized,
+    downloadSelector,
+    baseLabel: baseLabelFor(normalized),
+    formatNote: text(raw.format_note, "") || null,
+    fps: numberOrNull(raw.fps),
+    bitrateKbps: numberOrNull(raw.tbr)
+  };
 }
 
 export function normalizeYtDlpInfo(rawInfo: unknown): AnalyzeResult {
   const info: RawInfo = isRecord(rawInfo) ? rawInfo : {};
   const rawFormats = Array.isArray(info.formats) ? info.formats : [];
-  const formats = rawFormats
+  const normalizedFormats = rawFormats
     .map((raw) => normalizeFormat(raw))
-    .filter((format): format is VideoFormat => Boolean(format))
+    .filter((format): format is NormalizedFormat => Boolean(format))
     .sort((a, b) => {
       const videoDelta = Number(b.hasVideo) - Number(a.hasVideo);
       if (videoDelta !== 0) return videoDelta;
-      return (b.height ?? 0) - (a.height ?? 0);
+      const heightDelta = (b.height ?? 0) - (a.height ?? 0);
+      if (heightDelta !== 0) return heightDelta;
+      const fpsDelta = (b.fps ?? 0) - (a.fps ?? 0);
+      if (fpsDelta !== 0) return fpsDelta;
+      return (b.bitrateKbps ?? 0) - (a.bitrateKbps ?? 0);
     });
+  const labelCounts = new Map<string, number>();
+  for (const format of normalizedFormats) {
+    labelCounts.set(format.baseLabel, (labelCounts.get(format.baseLabel) ?? 0) + 1);
+  }
+  const duplicateBaseLabels = new Set(
+    Array.from(labelCounts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([label]) => label)
+  );
+  const formats = normalizedFormats.map(({ baseLabel, formatNote, fps, bitrateKbps, ...format }) => ({
+    ...format,
+    label: disambiguatedLabel({ ...format, baseLabel, formatNote, fps, bitrateKbps }, duplicateBaseLabels)
+  }));
 
   return {
     video: {

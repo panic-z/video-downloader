@@ -82,7 +82,7 @@ export default function HomePage() {
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
   const [selectedFormatId, setSelectedFormatId] = useState("");
   const [jobs, setJobs] = useState<JobView[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<"analyze" | "download" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
@@ -92,10 +92,10 @@ export default function HomePage() {
     [analysis, selectedFormatId]
   );
 
-  const actionsDisabled = busy || !dependenciesReady;
+  const actionsDisabled = Boolean(busyAction) || !dependenciesReady;
 
   async function analyze() {
-    setBusy(true);
+    setBusyAction("analyze");
     setMessage(null);
     setAnalysis(null);
 
@@ -122,13 +122,13 @@ export default function HomePage() {
     } catch {
       setMessage("Failed to analyze video.");
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }
 
   async function startSelectedDownload() {
     if (!analysis || !selectedFormat) return;
-    setBusy(true);
+    setBusyAction("download");
     setMessage(null);
 
     try {
@@ -168,7 +168,7 @@ export default function HomePage() {
     } catch {
       setMessage("Failed to start download.");
     } finally {
-      setBusy(false);
+      setBusyAction(null);
     }
   }
 
@@ -255,7 +255,7 @@ export default function HomePage() {
             <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://www.bilibili.com/video/..." />
           </label>
           <button className="primary" onClick={analyze} disabled={actionsDisabled || !url.trim()}>
-            Analyze
+            {busyAction === "analyze" ? "Analyzing..." : "Analyze"}
           </button>
           {dependencyMessage ? <p className="error">{dependencyMessage}</p> : null}
           {message ? <p className="error">{message}</p> : null}
@@ -288,7 +288,12 @@ export default function HomePage() {
                 <small>{format.sizeBytes ? `${Math.round(format.sizeBytes / 1024 / 1024)} MB` : "size unknown"}</small>
               </label>
             ))}
-            {!analysis ? <p className="muted">Analyze a URL to see available formats.</p> : null}
+            {busyAction === "analyze" ? (
+              <p className="muted">Analyzing video and loading formats...</p>
+            ) : null}
+            {!analysis && busyAction !== "analyze" ? (
+              <p className="muted">Analyze a URL to see available formats.</p>
+            ) : null}
             {analysis && analysis.formats.length === 0 ? (
               <p className="muted">No downloadable formats found.</p>
             ) : null}

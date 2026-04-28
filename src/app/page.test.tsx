@@ -17,6 +17,14 @@ function invalidJsonResponse(ok = false) {
   } as unknown as Response;
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+}
+
 const analysisResult = {
   video: {
     id: "video-1",
@@ -106,6 +114,30 @@ describe("HomePage", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: "https://example.com/watch?v=1" })
     });
+  });
+
+  it("shows immediate feedback while analysis is running", async () => {
+    const analyzeResponse = deferred<Response>();
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse(healthyDependencies))
+      .mockReturnValueOnce(analyzeResponse.promise);
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+
+    expect(screen.getByRole("button", { name: "Analyzing..." })).toBeDisabled();
+    expect(screen.getByText("Analyzing video and loading formats...")).toBeInTheDocument();
+
+    await act(async () => {
+      analyzeResponse.resolve(jsonResponse(analysisResult));
+      await analyzeResponse.promise;
+    });
+
+    expect(await screen.findByText("1080p mp4 video")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("shows a clear analyze error and clears busy state for invalid JSON responses", async () => {

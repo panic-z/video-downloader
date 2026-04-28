@@ -132,6 +132,38 @@ describe("normalizeYtDlpInfo", () => {
     });
   });
 
+  it("adds enough detail to distinguish formats with the same quality and container", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "301",
+          ext: "mp4",
+          height: 1080,
+          format_note: "1080P",
+          fps: 30,
+          tbr: 2400,
+          vcodec: "avc1",
+          acodec: "mp4a"
+        },
+        {
+          format_id: "302",
+          ext: "mp4",
+          height: 1080,
+          format_note: "1080P 60",
+          fps: 60,
+          tbr: 4200,
+          vcodec: "avc1",
+          acodec: "mp4a"
+        }
+      ]
+    });
+
+    expect(result.formats.map((format) => format.label)).toEqual([
+      "1080p mp4 video+audio · 1080P 60 · 60fps · 4200kbps · id 302",
+      "1080p mp4 video+audio · 1080P · 30fps · 2400kbps · id 301"
+    ]);
+  });
+
   it("skips formats without identifiable video or audio codecs", () => {
     const result = normalizeYtDlpInfo({
       formats: [
