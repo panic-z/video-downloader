@@ -115,4 +115,23 @@ describe("normalizeYtDlpInfo", () => {
       height: null
     });
   });
+
+  it("skips formats without identifiable video or audio codecs", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "unknown-media",
+          ext: "mp4"
+        },
+        {
+          format_id: "valid-audio",
+          ext: "m4a",
+          vcodec: "none",
+          acodec: "mp4a"
+        }
+      ]
+    });
+
+    expect(result.formats.map((format) => format.id)).toEqual(["valid-audio"]);
+  });
 });

@@ -48,6 +48,8 @@ function normalizeFormat(raw: unknown): VideoFormat | null {
   const height = numberOrNull(raw.height);
   const hasVideo = typeof raw.vcodec === "string" && raw.vcodec !== "none";
   const hasAudio = typeof raw.acodec === "string" && raw.acodec !== "none";
+  if (!hasVideo && !hasAudio) return null;
+
   const sizeBytes = numberOrNull(raw.filesize) ?? numberOrNull(raw.filesize_approx);
 
   const normalized = { id, height, extension, hasVideo, hasAudio, sizeBytes };
