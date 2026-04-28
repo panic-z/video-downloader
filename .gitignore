@@ -2,6 +2,6 @@
 .worktrees/
 node_modules/
 .next/
-downloads/
+/downloads/
 tsconfig.tsbuildinfo
 *.log
