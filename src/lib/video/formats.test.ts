@@ -57,4 +57,62 @@ describe("normalizeYtDlpInfo", () => {
     const result = normalizeYtDlpInfo(sample);
     expect(result.formats.map((format) => format.id)).toEqual(["137", "18", "140"]);
   });
+
+  it("handles malformed top-level input and skips malformed format entries", () => {
+    expect(normalizeYtDlpInfo(null)).toEqual({
+      video: {
+        id: "unknown",
+        title: "Untitled video",
+        source: "other",
+        durationSeconds: null
+      },
+      formats: []
+    });
+    expect(normalizeYtDlpInfo([])).toEqual({
+      video: {
+        id: "unknown",
+        title: "Untitled video",
+        source: "other",
+        durationSeconds: null
+      },
+      formats: []
+    });
+
+    const result = normalizeYtDlpInfo({
+      formats: [
+        null,
+        "bad",
+        {
+          format_id: "22",
+          ext: "mp4",
+          height: 720,
+          vcodec: "avc1",
+          acodec: "mp4a"
+        }
+      ]
+    });
+
+    expect(result.formats.map((format) => format.id)).toEqual(["22"]);
+  });
+
+  it("does not label video formats with missing height as audio", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "video-no-height",
+          ext: "mp4",
+          vcodec: "avc1",
+          acodec: "none"
+        }
+      ]
+    });
+
+    expect(result.formats[0]).toMatchObject({
+      id: "video-no-height",
+      label: "unknown mp4 video",
+      hasVideo: true,
+      hasAudio: false,
+      height: null
+    });
+  });
 });

@@ -1,16 +1,6 @@
 import { detectVideoSource } from "./url";
 import type { AnalyzeResult, VideoFormat, VideoSource } from "./types";
 
-type RawFormat = {
-  format_id?: unknown;
-  ext?: unknown;
-  height?: unknown;
-  vcodec?: unknown;
-  acodec?: unknown;
-  filesize?: unknown;
-  filesize_approx?: unknown;
-};
-
 type RawInfo = {
   id?: unknown;
   title?: unknown;
@@ -18,6 +8,10 @@ type RawInfo = {
   duration?: unknown;
   formats?: unknown;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function text(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value : fallback;
@@ -37,14 +31,16 @@ function sourceFromWebpageUrl(value: unknown): VideoSource {
 }
 
 function labelFor(format: Omit<VideoFormat, "label">): string {
-  const quality = format.height ? `${format.height}p` : "audio";
+  const quality = format.height ? `${format.height}p` : format.hasVideo ? "unknown" : "audio";
   const ext = format.extension ?? "unknown";
   const media =
     format.hasVideo && format.hasAudio ? "video+audio" : format.hasVideo ? "video" : "audio";
   return `${quality} ${ext} ${media}`;
 }
 
-function normalizeFormat(raw: RawFormat): VideoFormat | null {
+function normalizeFormat(raw: unknown): VideoFormat | null {
+  if (!isRecord(raw)) return null;
+
   const id = text(raw.format_id, "");
   if (!id) return null;
 
@@ -58,10 +54,11 @@ function normalizeFormat(raw: RawFormat): VideoFormat | null {
   return { ...normalized, label: labelFor(normalized) };
 }
 
-export function normalizeYtDlpInfo(rawInfo: RawInfo): AnalyzeResult {
-  const rawFormats = Array.isArray(rawInfo.formats) ? rawInfo.formats : [];
+export function normalizeYtDlpInfo(rawInfo: unknown): AnalyzeResult {
+  const info: RawInfo = isRecord(rawInfo) ? rawInfo : {};
+  const rawFormats = Array.isArray(info.formats) ? info.formats : [];
   const formats = rawFormats
-    .map((raw) => normalizeFormat(raw as RawFormat))
+    .map((raw) => normalizeFormat(raw))
     .filter((format): format is VideoFormat => Boolean(format))
     .sort((a, b) => {
       const videoDelta = Number(b.hasVideo) - Number(a.hasVideo);
@@ -71,10 +68,10 @@ export function normalizeYtDlpInfo(rawInfo: RawInfo): AnalyzeResult {
 
   return {
     video: {
-      id: text(rawInfo.id, "unknown"),
-      title: text(rawInfo.title, "Untitled video"),
-      source: sourceFromWebpageUrl(rawInfo.webpage_url),
-      durationSeconds: numberOrNull(rawInfo.duration)
+      id: text(info.id, "unknown"),
+      title: text(info.title, "Untitled video"),
+      source: sourceFromWebpageUrl(info.webpage_url),
+      durationSeconds: numberOrNull(info.duration)
     },
     formats
   };
