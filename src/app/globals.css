@@ -43,10 +43,12 @@ input {
 }
 
 .panel {
+  min-width: 0;
   background: #ffffff;
   border: 1px solid #dce3ee;
   border-radius: 8px;
   padding: 18px;
+  overflow-wrap: anywhere;
 }
 
 .panel:first-child,
@@ -100,6 +102,7 @@ input {
 }
 
 .summary {
+  min-width: 0;
   border-top: 1px solid #e7ecf3;
   margin-top: 16px;
   padding-top: 16px;
@@ -127,10 +130,17 @@ input {
 }
 
 .formatRow {
+  min-width: 0;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: center;
+}
+
+.formatRow span,
+.formatRow small {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .formatRow small,
@@ -139,10 +149,24 @@ input {
 }
 
 .job {
+  min-width: 0;
   display: flex;
   justify-content: space-between;
   gap: 12px;
   align-items: center;
+}
+
+.job > div {
+  min-width: 0;
+}
+
+.job strong,
+.job p {
+  overflow-wrap: anywhere;
+}
+
+.downloadLink {
+  flex-shrink: 0;
 }
 
 @media (max-width: 760px) {

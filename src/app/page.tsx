@@ -5,6 +5,56 @@ import type { AnalyzeResult, DownloadJob, VideoFormat } from "@/lib/video/types"
 
 type JobView = Pick<DownloadJob, "jobId" | "status" | "progress" | "title" | "fileName" | "error">;
 
+async function readJson(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function messageFromResponse(data: unknown, fallback: string) {
+  if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
+    return data.error;
+  }
+
+  return fallback;
+}
+
+function isAnalyzeResult(data: unknown): data is AnalyzeResult {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "video" in data &&
+      "formats" in data &&
+      Array.isArray(data.formats)
+  );
+}
+
+function isJobView(data: unknown): data is JobView {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "jobId" in data &&
+      typeof data.jobId === "string" &&
+      "status" in data &&
+      typeof data.status === "string" &&
+      "progress" in data &&
+      typeof data.progress === "number"
+  );
+}
+
+function isDownloadStart(data: unknown): data is Pick<JobView, "jobId" | "status"> {
+  return Boolean(
+    data &&
+      typeof data === "object" &&
+      "jobId" in data &&
+      typeof data.jobId === "string" &&
+      "status" in data &&
+      typeof data.status === "string"
+  );
+}
+
 export default function HomePage() {
   const [url, setUrl] = useState("");
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
@@ -23,21 +73,34 @@ export default function HomePage() {
     setMessage(null);
     setAnalysis(null);
 
-    const response = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+      });
+      const data = await readJson(response);
 
-    setBusy(false);
-    if (!response.ok) {
-      setMessage(data.error ?? "Failed to analyze video.");
-      return;
+      if (!response.ok) {
+        setMessage(messageFromResponse(data, "Failed to analyze video."));
+        return;
+      }
+
+      if (!isAnalyzeResult(data)) {
+        setMessage("Failed to analyze video.");
+        return;
+      }
+
+      setAnalysis(data);
+      setSelectedFormatId(data.formats[0]?.id ?? "");
+      if (data.formats.length === 0) {
+        setMessage("No downloadable formats found.");
+      }
+    } catch {
+      setMessage("Failed to analyze video.");
+    } finally {
+      setBusy(false);
     }
-
-    setAnalysis(data);
-    setSelectedFormatId(data.formats[0]?.id ?? "");
   }
 
   async function startSelectedDownload() {
@@ -45,48 +108,63 @@ export default function HomePage() {
     setBusy(true);
     setMessage(null);
 
-    const response = await fetch("/api/downloads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url,
-        formatId: selectedFormat.id,
-        title: analysis.video.title,
-        extension: selectedFormat.extension
-      })
-    });
-    const data = await response.json();
+    try {
+      const response = await fetch("/api/downloads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          formatId: selectedFormat.id,
+          title: analysis.video.title,
+          extension: selectedFormat.extension
+        })
+      });
+      const data = await readJson(response);
 
-    setBusy(false);
-    if (!response.ok) {
-      setMessage(data.error ?? "Failed to start download.");
-      return;
+      if (!response.ok) {
+        setMessage(messageFromResponse(data, "Failed to start download."));
+        return;
+      }
+
+      if (!isDownloadStart(data)) {
+        setMessage("Failed to start download.");
+        return;
+      }
+
+      setJobs((current) => [
+        {
+          jobId: data.jobId,
+          status: data.status,
+          progress: 0,
+          title: analysis.video.title,
+          fileName: null,
+          error: null
+        },
+        ...current
+      ]);
+    } catch {
+      setMessage("Failed to start download.");
+    } finally {
+      setBusy(false);
     }
-
-    setJobs((current) => [
-      {
-        jobId: data.jobId,
-        status: data.status,
-        progress: 0,
-        title: analysis.video.title,
-        fileName: null,
-        error: null
-      },
-      ...current
-    ]);
   }
 
   useEffect(() => {
-    if (jobs.length === 0) return;
+    const activeJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
+    if (activeJobs.length === 0) return;
 
     const interval = window.setInterval(async () => {
-      const activeJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
-      if (activeJobs.length === 0) return;
-
       const updates = await Promise.all(
         activeJobs.map(async (job) => {
-          const response = await fetch(`/api/downloads/${job.jobId}`);
-          return response.ok ? ((await response.json()) as JobView) : job;
+          try {
+            const response = await fetch(`/api/downloads/${job.jobId}`);
+            if (!response.ok) return job;
+
+            const data = await readJson(response);
+            return isJobView(data) ? data : job;
+          } catch {
+            return job;
+          }
         })
       );
 
