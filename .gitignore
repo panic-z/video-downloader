@@ -3,4 +3,5 @@
 node_modules/
 .next/
 downloads/
+tsconfig.tsbuildinfo
 *.log
