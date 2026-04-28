@@ -21,6 +21,10 @@ describe("parseSupportedVideoUrl", () => {
   it("rejects invalid URL text", () => {
     expect(parseSupportedVideoUrl("not a url").ok).toBe(false);
   });
+
+  it("rejects non-http protocols", () => {
+    expect(parseSupportedVideoUrl("ftp://youtube.com/watch?v=abc123").ok).toBe(false);
+  });
 });
 
 describe("detectVideoSource", () => {
