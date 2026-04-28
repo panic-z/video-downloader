@@ -40,6 +40,13 @@ export function startDownload(input: {
 
   const child = spawn("yt-dlp", args) as ChildProcessWithoutNullStreams;
   let lastError = "";
+  let terminalStateSet = false;
+
+  function setTerminalState(patch: Partial<DownloadJob>) {
+    if (terminalStateSet) return;
+    terminalStateSet = true;
+    input.store.update(input.job.jobId, patch);
+  }
 
   child.stdout.on("data", (chunk) => {
     const lines = String(chunk).split(/\r?\n/);
@@ -54,7 +61,7 @@ export function startDownload(input: {
   });
 
   child.on("error", (error) => {
-    input.store.update(input.job.jobId, {
+    setTerminalState({
       status: "failed",
       error: error.message
     });
@@ -62,11 +69,11 @@ export function startDownload(input: {
 
   child.on("close", (code) => {
     if (code === 0) {
-      input.store.update(input.job.jobId, { status: "completed", progress: 100 });
+      setTerminalState({ status: "completed", progress: 100 });
       return;
     }
 
-    input.store.update(input.job.jobId, {
+    setTerminalState({
       status: "failed",
       error: lastError || `yt-dlp exited with code ${code}`
     });

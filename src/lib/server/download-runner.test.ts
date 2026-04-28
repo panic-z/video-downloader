@@ -59,4 +59,27 @@ describe("startDownload", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(store.get(job.jobId)).toMatchObject({ status: "failed", error: "format unavailable" });
   });
+
+  it("keeps the original spawn error when close follows", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir: "/tmp/downloads",
+      store,
+      spawn
+    });
+
+    proc.emit("error", new Error("spawn failed"));
+    proc.emit("close", 0);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(store.get(job.jobId)).toMatchObject({ status: "failed", error: "spawn failed" });
+  });
 });

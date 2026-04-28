@@ -15,5 +15,15 @@ describe("createJobStore", () => {
     const updated = store.update(job.jobId, { status: "running", progress: 25 });
     expect(updated?.status).toBe("running");
     expect(updated?.progress).toBe(25);
+    expect(job.status).toBe("queued");
+  });
+
+  it("does not expose mutable stored job references", () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+
+    job.status = "completed";
+
+    expect(store.get(job.jobId)?.status).toBe("queued");
   });
 });

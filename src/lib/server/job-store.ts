@@ -4,6 +4,10 @@ import type { DownloadJob } from "@/lib/video/types";
 export function createJobStore(now: () => number = Date.now) {
   const jobs = new Map<string, DownloadJob>();
 
+  function copy(job: DownloadJob): DownloadJob {
+    return { ...job };
+  }
+
   return {
     create(input: { title: string }): DownloadJob {
       const timestamp = now();
@@ -19,17 +23,18 @@ export function createJobStore(now: () => number = Date.now) {
         updatedAt: timestamp
       };
       jobs.set(job.jobId, job);
-      return job;
+      return copy(job);
     },
     get(jobId: string): DownloadJob | null {
-      return jobs.get(jobId) ?? null;
+      const job = jobs.get(jobId);
+      return job ? copy(job) : null;
     },
     update(jobId: string, patch: Partial<DownloadJob>): DownloadJob | null {
       const current = jobs.get(jobId);
       if (!current) return null;
       const updated = { ...current, ...patch, updatedAt: now() };
       jobs.set(jobId, updated);
-      return updated;
+      return copy(updated);
     }
   };
 }
