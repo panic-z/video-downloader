@@ -443,4 +443,51 @@ describe("HomePage", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
   });
+
+  it("marks active downloads failed when their status value is unknown", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockFetchWithHealth(
+      jsonResponse(analysisResult),
+      jsonResponse({ jobId: "job-1", status: "queued" }),
+      jsonResponse({
+        jobId: "job-1",
+        status: "paused",
+        progress: 50,
+        title: "A very long demo video title",
+        fileName: null,
+        error: null
+      })
+    );
+
+    render(<HomePage />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.change(screen.getByLabelText("Video URL"), {
+      target: { value: "https://example.com/watch?v=1" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Analyze" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Download selected format" }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText("queued · 0%")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(screen.getByText("failed · 0%")).toBeInTheDocument();
+    expect(screen.getByText("Failed to refresh download status.")).toBeInTheDocument();
+    expect(screen.queryByText("paused · 50%")).not.toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
 });

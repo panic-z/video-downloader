@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AnalyzeResult, DownloadJob, VideoFormat } from "@/lib/video/types";
+import type { AnalyzeResult, DownloadJob, DownloadJobStatus, VideoFormat } from "@/lib/video/types";
 
 type JobView = Pick<DownloadJob, "jobId" | "status" | "progress" | "title" | "fileName" | "error">;
 type DependencyView = {
@@ -35,6 +35,10 @@ function isAnalyzeResult(data: unknown): data is AnalyzeResult {
   );
 }
 
+function isDownloadJobStatus(value: unknown): value is DownloadJobStatus {
+  return value === "queued" || value === "running" || value === "completed" || value === "failed";
+}
+
 function isJobView(data: unknown): data is JobView {
   return Boolean(
     data &&
@@ -42,7 +46,7 @@ function isJobView(data: unknown): data is JobView {
       "jobId" in data &&
       typeof data.jobId === "string" &&
       "status" in data &&
-      typeof data.status === "string" &&
+      isDownloadJobStatus(data.status) &&
       "progress" in data &&
       typeof data.progress === "number"
   );
@@ -55,7 +59,7 @@ function isDownloadStart(data: unknown): data is Pick<JobView, "jobId" | "status
       "jobId" in data &&
       typeof data.jobId === "string" &&
       "status" in data &&
-      typeof data.status === "string"
+      isDownloadJobStatus(data.status)
   );
 }
 
