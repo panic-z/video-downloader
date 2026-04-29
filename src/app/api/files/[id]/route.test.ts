@@ -106,4 +106,24 @@ describe("GET /api/files/[id]", () => {
       'attachment; filename="__ __.mp4"; filename*=UTF-8\'\'%E6%B5%8B%E8%AF%95%20%E8%A7%86%E9%A2%91.mp4'
     );
   });
+
+  it("RFC 5987 encodes apostrophes in the extended filename parameter", async () => {
+    const createReadStream = vi.fn(() => Readable.from([new Uint8Array([1])]));
+    resolveCompletedFile.mockReturnValue({
+      path: "/tmp/video.mp4",
+      fileName: "Bob's video.mp4"
+    });
+    open.mockResolvedValueOnce({
+      createReadStream
+    });
+
+    const response = await GET(new Request("http://localhost/api/files/job-test"), {
+      params: Promise.resolve({ id: "job-test" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="Bob\'s video.mp4"; filename*=UTF-8\'\'Bob%27s%20video.mp4'
+    );
+  });
 });
