@@ -254,9 +254,15 @@ export default function HomePage() {
         activeJobs.map(async (job) => {
           try {
             const response = await fetch(`/api/downloads/${job.jobId}`);
-            if (!response.ok) return job;
-
             const data = await readJson(response);
+            if (!response.ok) {
+              return {
+                ...job,
+                status: "failed" as const,
+                error: messageFromResponse(data, "Failed to refresh download status.")
+              };
+            }
+
             return isJobView(data) ? data : job;
           } catch {
             return job;
