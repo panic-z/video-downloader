@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnalyzeResult, DownloadJob, DownloadJobStatus, VideoFormat } from "@/lib/video/types";
 
 type JobView = Pick<DownloadJob, "jobId" | "status" | "progress" | "title" | "fileName" | "error">;
+type DownloadStartStatus = Extract<DownloadJobStatus, "queued" | "running">;
 type DependencyView = {
   name: string;
   available: boolean;
@@ -39,6 +40,10 @@ function isDownloadJobStatus(value: unknown): value is DownloadJobStatus {
   return value === "queued" || value === "running" || value === "completed" || value === "failed";
 }
 
+function isDownloadStartStatus(value: unknown): value is DownloadStartStatus {
+  return value === "queued" || value === "running";
+}
+
 function isJobView(data: unknown): data is JobView {
   return Boolean(
     data &&
@@ -59,7 +64,7 @@ function isDownloadStart(data: unknown): data is Pick<JobView, "jobId" | "status
       "jobId" in data &&
       typeof data.jobId === "string" &&
       "status" in data &&
-      isDownloadJobStatus(data.status)
+      isDownloadStartStatus(data.status)
   );
 }
 

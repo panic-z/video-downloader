@@ -284,6 +284,24 @@ describe("HomePage", () => {
     expect(screen.getByText("queued · 0%")).toBeInTheDocument();
   });
 
+  it("rejects terminal statuses from the start download response", async () => {
+    mockFetchWithHealth(
+      jsonResponse(analysisResult),
+      jsonResponse({ jobId: "job-1", status: "completed" })
+    );
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+    await screen.findByText("1080p mp4 video");
+    await user.click(screen.getByRole("button", { name: "Download selected format" }));
+
+    expect(await screen.findByText("Failed to start download.")).toBeInTheDocument();
+    expect(screen.queryByText("completed · 0%")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Download file" })).not.toBeInTheDocument();
+  });
+
   it("shows a clear download error and clears busy state when starting a download fails", async () => {
     const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
     fetchMock.mockRejectedValueOnce(new Error("Network error"));
