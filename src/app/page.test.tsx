@@ -126,7 +126,7 @@ describe("HomePage", () => {
     expect(await screen.findByRole("heading", { name: "A very long demo video title" })).toBeInTheDocument();
     expect(screen.getByText("1080p mp4 video")).toBeInTheDocument();
     expect(screen.getByText("20 MB")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/analyze", {
+    expect(fetchMock).toHaveBeenCalledWith("/video-downloader/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: "https://example.com/watch?v=1" })
@@ -298,7 +298,7 @@ describe("HomePage", () => {
     await user.click(screen.getByRole("button", { name: "Download selected format" }));
 
     expect(await screen.findByText("queued · 0%")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenLastCalledWith("/api/downloads", {
+    expect(fetchMock).toHaveBeenLastCalledWith("/video-downloader/api/downloads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -425,7 +425,10 @@ describe("HomePage", () => {
     });
 
     expect(screen.getByText("completed · 100%")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute("href", "/api/files/job-1");
+    expect(screen.getByRole("link", { name: "Download file" })).toHaveAttribute(
+      "href",
+      "/video-downloader/api/files/job-1"
+    );
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000);

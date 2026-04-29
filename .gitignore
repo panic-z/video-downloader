@@ -8,3 +8,4 @@ tsconfig.tsbuildinfo
 *.log
 playwright-report/
 test-results/
+.vercel

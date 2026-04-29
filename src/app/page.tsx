@@ -10,6 +10,12 @@ type DependencyView = {
   available: boolean;
 };
 
+const appBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/video-downloader";
+
+function apiPath(path: `/api/${string}`) {
+  return `${appBasePath}${path}`;
+}
+
 async function readJson(response: Response) {
   try {
     return await response.json();
@@ -170,7 +176,7 @@ export default function HomePage() {
     setAnalysis(null);
 
     try {
-      const response = await fetch("/api/analyze", {
+      const response = await fetch(apiPath("/api/analyze"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: requestUrl })
@@ -207,7 +213,7 @@ export default function HomePage() {
     setDownloadMessage("Starting download job...");
 
     try {
-      const response = await fetch("/api/downloads", {
+      const response = await fetch(apiPath("/api/downloads"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -256,7 +262,7 @@ export default function HomePage() {
 
     async function checkHealth() {
       try {
-        const response = await fetch("/api/health");
+        const response = await fetch(apiPath("/api/health"));
         const data = await readJson(response);
         if (cancelled) return;
 
@@ -305,7 +311,7 @@ export default function HomePage() {
       const updates = await Promise.all(
         activeJobs.map(async (job) => {
           try {
-            const response = await fetch(`/api/downloads/${job.jobId}`);
+            const response = await fetch(apiPath(`/api/downloads/${job.jobId}`));
             const data = await readJson(response);
             if (!response.ok) {
               return {
@@ -420,7 +426,7 @@ export default function HomePage() {
                   {job.error ? <p className="error">{job.error}</p> : null}
                 </div>
                 {job.status === "completed" ? (
-                  <a className="downloadLink" href={`/api/files/${job.jobId}`}>
+                  <a className="downloadLink" href={apiPath(`/api/files/${job.jobId}`)}>
                     Download file
                   </a>
                 ) : null}
