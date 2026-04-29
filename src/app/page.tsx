@@ -282,7 +282,11 @@ export default function HomePage() {
 
             return data;
           } catch {
-            return job;
+            return {
+              ...job,
+              status: "failed" as const,
+              error: "Failed to refresh download status."
+            };
           }
         })
       );
