@@ -94,7 +94,7 @@ function normalizeFormat(raw: unknown): NormalizedFormat | null {
   const sizeBytes = numberOrNull(raw.filesize) ?? numberOrNull(raw.filesize_approx);
 
   const normalized = { id, height, extension, hasVideo, hasAudio, sizeBytes };
-  const downloadSelector = hasVideo && !hasAudio ? `${id}+bestaudio/best` : id;
+  const downloadSelector = hasVideo && !hasAudio ? `${id}+bestaudio/${id}` : id;
   return {
     ...normalized,
     downloadSelector,

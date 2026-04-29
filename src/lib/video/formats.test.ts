@@ -44,7 +44,7 @@ describe("normalizeYtDlpInfo", () => {
     });
     expect(result.formats[0]).toMatchObject({
       id: "137",
-      downloadSelector: "137+bestaudio/best",
+      downloadSelector: "137+bestaudio/137",
       label: "1080p mp4 video+audio",
       height: 1080,
       extension: "mp4",
@@ -68,10 +68,26 @@ describe("normalizeYtDlpInfo", () => {
         downloadSelector: format.downloadSelector
       }))
     ).toEqual([
-      { id: "137", downloadSelector: "137+bestaudio/best" },
+      { id: "137", downloadSelector: "137+bestaudio/137" },
       { id: "18", downloadSelector: "18" },
       { id: "140", downloadSelector: "140" }
     ]);
+  });
+
+  it("falls back to the selected video format instead of arbitrary best", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "137",
+          ext: "mp4",
+          height: 1080,
+          vcodec: "avc1",
+          acodec: "none"
+        }
+      ]
+    });
+
+    expect(result.formats[0].downloadSelector).toBe("137+bestaudio/137");
   });
 
   it("handles malformed top-level input and skips malformed format entries", () => {
@@ -263,12 +279,12 @@ describe("normalizeYtDlpInfo", () => {
       {
         id: "137",
         label: "1080p mp4 video+audio",
-        downloadSelector: "137+bestaudio/best"
+        downloadSelector: "137+bestaudio/137"
       },
       {
         id: "136",
         label: "720p mp4 video+audio",
-        downloadSelector: "136+bestaudio/best"
+        downloadSelector: "136+bestaudio/136"
       }
     ]);
   });
@@ -306,7 +322,7 @@ describe("normalizeYtDlpInfo", () => {
     }))).toEqual([
       {
         id: "137",
-        downloadSelector: "137+bestaudio/best"
+        downloadSelector: "137+bestaudio/137"
       }
     ]);
   });

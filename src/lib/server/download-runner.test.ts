@@ -50,7 +50,7 @@ describe("startDownload", () => {
     startDownload({
       job,
       url: "https://youtu.be/id",
-      formatId: "137+bestaudio/best",
+      formatId: "137+bestaudio/137",
       extension: "webm",
       downloadDir,
       store,

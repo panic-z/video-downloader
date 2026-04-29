@@ -96,6 +96,14 @@ export default function HomePage() {
 
   const actionsDisabled = Boolean(busyAction) || !dependenciesReady;
 
+  function handleUrlChange(nextUrl: string) {
+    setUrl(nextUrl);
+    setAnalysis(null);
+    setSelectedFormatId("");
+    setDownloadMessage(null);
+    setMessage(null);
+  }
+
   async function analyze() {
     setBusyAction("analyze");
     setMessage(null);
@@ -264,7 +272,11 @@ export default function HomePage() {
         <div className="panel">
           <label className="field">
             <span>Video URL</span>
-            <input value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://www.bilibili.com/video/..." />
+            <input
+              value={url}
+              onChange={(event) => handleUrlChange(event.target.value)}
+              placeholder="https://www.bilibili.com/video/..."
+            />
           </label>
           <button className="primary" onClick={analyze} disabled={actionsDisabled || !url.trim()}>
             {busyAction === "analyze" ? "Analyzing..." : "Analyze"}

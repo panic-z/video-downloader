@@ -35,7 +35,7 @@ const analysisResult = {
   formats: [
     {
       id: "137",
-      downloadSelector: "137+bestaudio/best",
+      downloadSelector: "137+bestaudio/137",
       label: "1080p mp4 video",
       height: 1080,
       extension: "mp4",
@@ -190,6 +190,25 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
   });
 
+  it("clears stale formats when the URL changes after analysis", async () => {
+    mockFetchWithHealth(jsonResponse(analysisResult));
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    const urlInput = screen.getByLabelText("Video URL");
+    await user.type(urlInput, "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+    await screen.findByText("1080p mp4 video");
+
+    await user.clear(urlInput);
+    await user.type(urlInput, "https://example.com/watch?v=2");
+
+    expect(screen.queryByRole("heading", { name: "A very long demo video title" })).not.toBeInTheDocument();
+    expect(screen.queryByText("1080p mp4 video")).not.toBeInTheDocument();
+    expect(screen.getByText("Analyze a URL to see available formats.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
+  });
+
   it("starts a download for the selected format", async () => {
     const fetchMock = mockFetchWithHealth(
       jsonResponse(analysisResult),
@@ -209,7 +228,7 @@ describe("HomePage", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         url: "https://example.com/watch?v=1",
-        formatId: "137+bestaudio/best",
+        formatId: "137+bestaudio/137",
         title: "A very long demo video title",
         extension: "mp4"
       })
