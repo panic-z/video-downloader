@@ -263,7 +263,15 @@ export default function HomePage() {
               };
             }
 
-            return isJobView(data) ? data : job;
+            if (!isJobView(data)) {
+              return {
+                ...job,
+                status: "failed" as const,
+                error: "Failed to refresh download status."
+              };
+            }
+
+            return data;
           } catch {
             return job;
           }
