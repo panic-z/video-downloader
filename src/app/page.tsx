@@ -85,6 +85,7 @@ export default function HomePage() {
   const [busyAction, setBusyAction] = useState<"analyze" | "download" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
+  const [dependenciesChecking, setDependenciesChecking] = useState(true);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
 
@@ -211,6 +212,10 @@ export default function HomePage() {
         if (!cancelled) {
           setDependencyMessage("Could not verify downloader dependencies. Install yt-dlp and ffmpeg, then refresh.");
         }
+      } finally {
+        if (!cancelled) {
+          setDependenciesChecking(false);
+        }
       }
     }
 
@@ -264,6 +269,9 @@ export default function HomePage() {
           <button className="primary" onClick={analyze} disabled={actionsDisabled || !url.trim()}>
             {busyAction === "analyze" ? "Analyzing..." : "Analyze"}
           </button>
+          {dependenciesChecking && !dependencyMessage ? (
+            <p className="muted">Checking downloader dependencies...</p>
+          ) : null}
           {dependencyMessage ? <p className="error">{dependencyMessage}</p> : null}
           {message ? <p className="error">{message}</p> : null}
 

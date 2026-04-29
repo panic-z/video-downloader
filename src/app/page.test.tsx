@@ -98,6 +98,23 @@ describe("HomePage", () => {
     expect(screen.getByText("Downloads")).toBeInTheDocument();
   });
 
+  it("shows dependency checking feedback while health is pending", async () => {
+    const healthResponse = deferred<Response>();
+    vi.spyOn(globalThis, "fetch").mockReturnValueOnce(healthResponse.promise);
+
+    render(<HomePage />);
+
+    expect(screen.getByText("Checking downloader dependencies...")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
+
+    await act(async () => {
+      healthResponse.resolve(jsonResponse(healthyDependencies));
+      await healthResponse.promise;
+    });
+
+    expect(screen.queryByText("Checking downloader dependencies...")).not.toBeInTheDocument();
+  });
+
   it("renders video details and formats after a successful analyze request", async () => {
     const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
     const user = userEvent.setup();
