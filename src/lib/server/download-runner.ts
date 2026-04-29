@@ -11,6 +11,7 @@ type JobStore = ReturnType<typeof createJobStore>;
 type SpawnFn = typeof nodeSpawn;
 
 const MAX_ERROR_OUTPUT_LENGTH = 4096;
+const MAX_STDOUT_LINE_LENGTH = 4096;
 
 function resolveCompletedOutput(downloadDir: string, outputStem: string) {
   try {
@@ -62,8 +63,14 @@ export function startDownload(input: {
   });
 
   const child = spawn("yt-dlp", args) as ChildProcessWithoutNullStreams;
+  let stdoutLineBuffer = "";
   let errorOutput = "";
   let terminalStateSet = false;
+
+  function updateProgressFromLine(line: string) {
+    const progress = parseDownloadProgress(line);
+    if (progress !== null) input.store.update(input.job.jobId, { progress });
+  }
 
   function setTerminalState(patch: Partial<DownloadJob>) {
     if (terminalStateSet) return;
@@ -72,11 +79,15 @@ export function startDownload(input: {
   }
 
   child.stdout.on("data", (chunk) => {
-    const lines = String(chunk).split(/\r?\n/);
-    for (const line of lines) {
-      const progress = parseDownloadProgress(line);
-      if (progress !== null) input.store.update(input.job.jobId, { progress });
+    stdoutLineBuffer = `${stdoutLineBuffer}${String(chunk)}`;
+    const lines = stdoutLineBuffer.split(/\r?\n|\r/);
+    stdoutLineBuffer = lines.pop() ?? "";
+
+    if (stdoutLineBuffer.length > MAX_STDOUT_LINE_LENGTH) {
+      stdoutLineBuffer = stdoutLineBuffer.slice(-MAX_STDOUT_LINE_LENGTH);
     }
+
+    for (const line of lines) updateProgressFromLine(line);
   });
 
   child.stderr.on("data", (chunk) => {
@@ -94,6 +105,11 @@ export function startDownload(input: {
   });
 
   child.on("close", (code, signal) => {
+    if (stdoutLineBuffer) {
+      updateProgressFromLine(stdoutLineBuffer);
+      stdoutLineBuffer = "";
+    }
+
     if (code === 0) {
       const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem);
       if (completedOutput) {

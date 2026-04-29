@@ -43,6 +43,28 @@ describe("startDownload", () => {
     expect(store.get(job.jobId)).toMatchObject({ status: "completed", progress: 100 });
   });
 
+  it("updates progress when yt-dlp stdout lines are split across chunks", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir: "/tmp/downloads",
+      store,
+      spawn
+    });
+
+    proc.stdout.emit("data", Buffer.from("[download]  62"));
+    proc.stdout.emit("data", Buffer.from(".3% of 10.00MiB\n"));
+
+    expect(store.get(job.jobId)).toMatchObject({ status: "running", progress: 62.3 });
+  });
+
   it("updates completed jobs to the actual merged output file extension", async () => {
     const store = createJobStore(() => 1000);
     const job = store.create({ title: "Title" });
