@@ -124,6 +124,31 @@ describe("startDownload", () => {
     expect(store.get(job.jobId)).toMatchObject({ status: "failed", error: "format unavailable" });
   });
 
+  it("reports the terminating signal when yt-dlp is killed", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir: "/tmp/downloads",
+      store,
+      spawn
+    });
+
+    proc.emit("close", null, "SIGTERM");
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(store.get(job.jobId)).toMatchObject({
+      status: "failed",
+      error: "yt-dlp was terminated by signal SIGTERM"
+    });
+  });
+
   it("keeps the original spawn error when close follows", async () => {
     const store = createJobStore(() => 1000);
     const job = store.create({ title: "Title" });

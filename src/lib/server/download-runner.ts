@@ -88,7 +88,7 @@ export function startDownload(input: {
     });
   });
 
-  child.on("close", (code) => {
+  child.on("close", (code, signal) => {
     if (code === 0) {
       const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem);
       if (completedOutput) {
@@ -105,7 +105,7 @@ export function startDownload(input: {
 
     setTerminalState({
       status: "failed",
-      error: lastError || `yt-dlp exited with code ${code}`
+      error: lastError || (signal ? `yt-dlp was terminated by signal ${signal}` : `yt-dlp exited with code ${code}`)
     });
   });
 }
