@@ -28,11 +28,24 @@ The app checks for `yt-dlp` and `ffmpeg` on startup. The npm install step downlo
 
 应用启动后会检测 `yt-dlp` 和 `ffmpeg`。`npm install` 会下载适合 Vercel 等部署环境使用的内置二进制；如果内置二进制不可用，应用会回退到系统里的 `yt-dlp` 和 `ffmpeg` 命令。
 
-## Install / 安装
+## Local Usage / 本地使用
 
 ```bash
 npm install
+npm run local
 ```
+
+Open:
+
+打开：
+
+```text
+http://localhost:3000/video-downloader
+```
+
+The supported downloader runtime is local. Vercel is kept as a discovery/demo deployment, but cloud IPs commonly trigger YouTube bot checks and serverless functions are not reliable for long downloads.
+
+本项目正式支持的下载运行环境是本机。Vercel 仅作为入口/演示部署；云端 IP 经常触发 YouTube 机器人校验，Serverless 函数也不适合长时间下载。
 
 Optional local fallback if npm binary installation is skipped:
 
@@ -42,18 +55,10 @@ Optional local fallback if npm binary installation is skipped:
 brew install yt-dlp ffmpeg
 ```
 
-## Development / 本地开发
+## Development / 开发
 
 ```bash
 npm run dev
-```
-
-Open:
-
-打开：
-
-```text
-http://localhost:3000
 ```
 
 ## Production Build / 生产构建
@@ -82,20 +87,20 @@ Downloaded videos are saved under:
 downloads/
 ```
 
-On Vercel, downloaded files are saved under the function temporary directory instead because the deployed project directory is read-only.
-
-Vercel 部署环境中，下载文件会保存到函数临时目录，因为部署后的项目目录不可写。
-
 The `downloads/` directory is ignored by Git. After each successful download, the app keeps the 10 newest files in that directory and deletes older files. Failed or unfinished downloads do not trigger cleanup.
 
 `downloads/` 目录不会进入 Git。每次新下载成功完成后，应用会在该目录中只保留最新 10 个文件，并删除更早的文件。失败或未完成的下载不会触发清理。
+
+On Vercel, analyze and download API routes return a local-first warning instead of creating download jobs, so video files are not saved in the deployment environment.
+
+在 Vercel 上，分析和下载接口会返回本地运行提示，不会创建下载任务，因此不会在部署环境中保存视频文件。
 
 ## Notes / 注意事项
 
 - Use this only for public videos you are allowed to download.
 - Some platforms may restrict formats, regions, login-only content, or copyrighted media.
-- Cloud deployments may use ephemeral storage; local files may not persist across restarts.
+- Run locally when you need to analyze or download videos.
 
 - 仅用于下载你有权下载的公开视频。
 - 平台可能会限制格式、地区、登录内容或版权内容。
-- 如果部署到云平台，磁盘可能是临时存储，文件不一定能跨重启保留。
+- 需要分析或下载视频时，请在本机运行。
