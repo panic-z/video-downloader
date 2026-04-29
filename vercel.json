@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "YOUTUBE_DL_FILENAME=yt-dlp_linux YOUTUBE_DL_SKIP_PYTHON_CHECK=true npm install && YOUTUBE_DL_FILENAME=yt-dlp_linux YOUTUBE_DL_SKIP_PYTHON_CHECK=true npm rebuild youtube-dl-exec"
+  "installCommand": "YOUTUBE_DL_SKIP_DOWNLOAD=true npm install"
 }
