@@ -6,3 +6,5 @@ next-env.d.ts
 /downloads/
 tsconfig.tsbuildinfo
 *.log
+playwright-report/
+test-results/
