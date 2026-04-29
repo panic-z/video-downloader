@@ -199,6 +199,30 @@ describe("HomePage", () => {
     });
   });
 
+  it("shows immediate feedback while a download job is starting", async () => {
+    const downloadResponse = deferred<Response>();
+    const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
+    fetchMock.mockReturnValueOnce(downloadResponse.promise);
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+    await screen.findByText("1080p mp4 video");
+    await user.click(screen.getByRole("button", { name: "Download selected format" }));
+
+    expect(screen.getByRole("button", { name: "Starting download..." })).toBeDisabled();
+    expect(screen.getByText("Starting download job...")).toBeInTheDocument();
+
+    await act(async () => {
+      downloadResponse.resolve(jsonResponse({ jobId: "job-1", status: "queued" }));
+      await downloadResponse.promise;
+    });
+
+    expect(await screen.findByText("Download job started. Track progress in Downloads.")).toBeInTheDocument();
+    expect(screen.getByText("queued · 0%")).toBeInTheDocument();
+  });
+
   it("shows a clear download error and clears busy state when starting a download fails", async () => {
     const fetchMock = mockFetchWithHealth(jsonResponse(analysisResult));
     fetchMock.mockRejectedValueOnce(new Error("Network error"));

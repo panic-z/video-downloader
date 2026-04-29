@@ -84,6 +84,7 @@ export default function HomePage() {
   const [jobs, setJobs] = useState<JobView[]>([]);
   const [busyAction, setBusyAction] = useState<"analyze" | "download" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [downloadMessage, setDownloadMessage] = useState<string | null>(null);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
 
@@ -97,6 +98,7 @@ export default function HomePage() {
   async function analyze() {
     setBusyAction("analyze");
     setMessage(null);
+    setDownloadMessage(null);
     setAnalysis(null);
 
     try {
@@ -130,6 +132,7 @@ export default function HomePage() {
     if (!analysis || !selectedFormat) return;
     setBusyAction("download");
     setMessage(null);
+    setDownloadMessage("Starting download job...");
 
     try {
       const response = await fetch("/api/downloads", {
@@ -145,15 +148,18 @@ export default function HomePage() {
       const data = await readJson(response);
 
       if (!response.ok) {
+        setDownloadMessage(null);
         setMessage(messageFromResponse(data, "Failed to start download."));
         return;
       }
 
       if (!isDownloadStart(data)) {
+        setDownloadMessage(null);
         setMessage("Failed to start download.");
         return;
       }
 
+      setDownloadMessage("Download job started. Track progress in Downloads.");
       setJobs((current) => [
         {
           jobId: data.jobId,
@@ -166,6 +172,7 @@ export default function HomePage() {
         ...current
       ]);
     } catch {
+      setDownloadMessage(null);
       setMessage("Failed to start download.");
     } finally {
       setBusyAction(null);
@@ -272,9 +279,10 @@ export default function HomePage() {
           <div className="panelHeader">
             <h2>Formats</h2>
             <button className="primary" onClick={startSelectedDownload} disabled={!selectedFormat || actionsDisabled}>
-              Download selected format
+              {busyAction === "download" ? "Starting download..." : "Download selected format"}
             </button>
           </div>
+          {downloadMessage ? <p className="muted">{downloadMessage}</p> : null}
           <div className="formatList">
             {(analysis?.formats ?? []).map((format: VideoFormat) => (
               <label key={format.id} className="formatRow">

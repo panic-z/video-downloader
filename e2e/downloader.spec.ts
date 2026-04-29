@@ -62,6 +62,7 @@ test("analyzes a URL, displays distinct formats, starts a download, and exposes 
 
   await page.route("**/api/downloads", async (route) => {
     downloadRequestBody = route.request().postDataJSON();
+    await new Promise((resolve) => setTimeout(resolve, 300));
     await route.fulfill({
       contentType: "application/json",
       body: JSON.stringify({ jobId: "job-1", status: "queued" })
@@ -115,6 +116,9 @@ test("analyzes a URL, displays distinct formats, starts a download, and exposes 
     .check();
   await page.getByRole("button", { name: "Download selected format" }).click();
 
+  await expect(page.getByRole("button", { name: "Starting download..." })).toBeDisabled();
+  await expect(page.getByText("Starting download job...")).toBeVisible();
+  await expect(page.getByText("Download job started. Track progress in Downloads.")).toBeVisible();
   await expect(page.getByText("queued · 0%")).toBeVisible();
   await expect(page.getByText("completed · 100%")).toBeVisible();
   expect(downloadRequestBody).toEqual({
