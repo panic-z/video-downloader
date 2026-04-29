@@ -5,6 +5,12 @@ import { jsonError, readJsonBody } from "@/lib/server/api-errors";
 import { jobStore } from "@/lib/server/job-store";
 import { startDownload } from "@/lib/server/download-runner";
 
+const FORMAT_ID_PATTERN = /^[A-Za-z0-9._:+/,-]{1,120}$/;
+
+function validFormatId(value: string): boolean {
+  return FORMAT_ID_PATTERN.test(value);
+}
+
 export async function POST(request: Request) {
   const body = await readJsonBody<{
     url?: unknown;
@@ -25,6 +31,11 @@ export async function POST(request: Request) {
   const parsed = parseSupportedVideoUrl(body.url);
   if (!parsed.ok) return jsonError(parsed.error, 400);
 
+  const formatId = body.formatId.trim();
+  if (!validFormatId(formatId)) {
+    return jsonError("A valid format id is required.", 400);
+  }
+
   const title = typeof body.title === "string" && body.title.trim() ? body.title : "Untitled video";
   const extension = typeof body.extension === "string" ? body.extension : null;
   const job = jobStore.create({ title });
@@ -33,7 +44,7 @@ export async function POST(request: Request) {
     startDownload({
       job,
       url: parsed.url,
-      formatId: body.formatId.trim(),
+      formatId,
       extension,
       downloadDir: path.join(process.cwd(), "downloads"),
       store: jobStore

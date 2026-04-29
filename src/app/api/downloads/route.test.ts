@@ -63,6 +63,34 @@ describe("POST /api/downloads", () => {
     expect(startDownload).not.toHaveBeenCalled();
   });
 
+  it("returns 400 for format ids with control characters", async () => {
+    const response = await POST(new Request("http://localhost/api/downloads", {
+      method: "POST",
+      body: JSON.stringify({ url: "https://youtu.be/id", formatId: "18\nbest" })
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "A valid format id is required."
+    });
+    expect(jobStore.create).not.toHaveBeenCalled();
+    expect(startDownload).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for overlong format ids", async () => {
+    const response = await POST(new Request("http://localhost/api/downloads", {
+      method: "POST",
+      body: JSON.stringify({ url: "https://youtu.be/id", formatId: "1".repeat(200) })
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "A valid format id is required."
+    });
+    expect(jobStore.create).not.toHaveBeenCalled();
+    expect(startDownload).not.toHaveBeenCalled();
+  });
+
   it("creates a queued job", async () => {
     const response = await POST(new Request("http://localhost/api/downloads", {
       method: "POST",
