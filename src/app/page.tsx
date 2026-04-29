@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { AnalyzeResult, DownloadJob, VideoFormat } from "@/lib/video/types";
 
 type JobView = Pick<DownloadJob, "jobId" | "status" | "progress" | "title" | "fileName" | "error">;
@@ -88,6 +88,7 @@ export default function HomePage() {
   const [dependenciesChecking, setDependenciesChecking] = useState(true);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
+  const analyzeRequestId = useRef(0);
 
   const selectedFormat = useMemo(
     () => analysis?.formats.find((format) => format.id === selectedFormatId) ?? null,
@@ -97,14 +98,20 @@ export default function HomePage() {
   const actionsDisabled = Boolean(busyAction) || !dependenciesReady;
 
   function handleUrlChange(nextUrl: string) {
+    analyzeRequestId.current += 1;
     setUrl(nextUrl);
     setAnalysis(null);
     setSelectedFormatId("");
     setDownloadMessage(null);
     setMessage(null);
+    setBusyAction((current) => (current === "analyze" ? null : current));
   }
 
   async function analyze() {
+    const requestId = analyzeRequestId.current + 1;
+    analyzeRequestId.current = requestId;
+    const requestUrl = url;
+
     setBusyAction("analyze");
     setMessage(null);
     setDownloadMessage(null);
@@ -114,9 +121,10 @@ export default function HomePage() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ url: requestUrl })
       });
       const data = await readJson(response);
+      if (analyzeRequestId.current !== requestId) return;
 
       if (!response.ok) {
         setMessage(messageFromResponse(data, "Failed to analyze video."));
@@ -131,9 +139,12 @@ export default function HomePage() {
       setAnalysis(data);
       setSelectedFormatId(data.formats[0]?.id ?? "");
     } catch {
+      if (analyzeRequestId.current !== requestId) return;
       setMessage("Failed to analyze video.");
     } finally {
-      setBusyAction(null);
+      if (analyzeRequestId.current === requestId) {
+        setBusyAction(null);
+      }
     }
   }
 

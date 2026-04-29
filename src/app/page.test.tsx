@@ -157,6 +157,31 @@ describe("HomePage", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("ignores stale analysis responses after the URL changes", async () => {
+    const analyzeResponse = deferred<Response>();
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse(healthyDependencies))
+      .mockReturnValueOnce(analyzeResponse.promise);
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    const urlInput = screen.getByLabelText("Video URL");
+    await user.type(urlInput, "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+    await user.clear(urlInput);
+    await user.type(urlInput, "https://example.com/watch?v=2");
+
+    await act(async () => {
+      analyzeResponse.resolve(jsonResponse(analysisResult));
+      await analyzeResponse.promise;
+    });
+
+    expect(screen.queryByRole("heading", { name: "A very long demo video title" })).not.toBeInTheDocument();
+    expect(screen.queryByText("1080p mp4 video")).not.toBeInTheDocument();
+    expect(screen.getByText("Analyze a URL to see available formats.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
+  });
+
   it("shows a clear analyze error and clears busy state for invalid JSON responses", async () => {
     mockFetchWithHealth(invalidJsonResponse(false));
     const user = userEvent.setup();
