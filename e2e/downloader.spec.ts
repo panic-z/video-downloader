@@ -51,6 +51,28 @@ async function expectDownloadsBesideFormats(page: import("@playwright/test").Pag
   expect(downloadsBox.x).toBeGreaterThan(formatsBox.x);
 }
 
+async function expectMinimalAnthropicStyle(page: import("@playwright/test").Page) {
+  const styles = await page.evaluate(() => {
+    const body = window.getComputedStyle(document.body);
+    const button = window.getComputedStyle(document.querySelector(".primary") as HTMLElement);
+    const panel = window.getComputedStyle(document.querySelector(".panel") as HTMLElement);
+
+    return {
+      bodyBackground: body.backgroundColor,
+      bodyColor: body.color,
+      buttonBackground: button.backgroundColor,
+      panelBackground: panel.backgroundColor,
+      panelRadius: panel.borderRadius
+    };
+  });
+
+  expect(styles.bodyBackground).toBe("rgb(247, 244, 238)");
+  expect(styles.bodyColor).toBe("rgb(31, 29, 26)");
+  expect(styles.buttonBackground).toBe("rgb(38, 35, 31)");
+  expect(styles.panelBackground).toBe("rgb(255, 254, 250)");
+  expect(Number.parseFloat(styles.panelRadius)).toBeLessThanOrEqual(8);
+}
+
 test("analyzes a URL, displays distinct formats, starts a download, and exposes the file link", async ({
   page
 }) => {
@@ -112,6 +134,7 @@ test("analyzes a URL, displays distinct formats, starts a download, and exposes 
   });
 
   await page.goto("/");
+  await expectMinimalAnthropicStyle(page);
   await expectDownloadsBesideFormats(page);
   await page.getByLabel("Video URL").fill(videoUrl);
   await expect(page.getByRole("button", { name: "Analyze" })).toBeEnabled();
