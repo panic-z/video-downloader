@@ -83,6 +83,7 @@ function mockFetchWithHealth(...responses: Response[]) {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
@@ -96,6 +97,25 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: "Analyze" })).toBeInTheDocument();
     expect(screen.getByText("Formats")).toBeInTheDocument();
     expect(screen.getByText("Downloads")).toBeInTheDocument();
+  });
+
+  it("renders only local-run guidance and a GitHub link in hosted mode", () => {
+    vi.stubEnv("NEXT_PUBLIC_RUNTIME_MODE", "vercel");
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+
+    render(<HomePage />);
+
+    expect(screen.getByRole("heading", { name: "Run locally" })).toBeInTheDocument();
+    expect(screen.getByText(/This hosted page does not run video downloads/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "GitHub repository" })).toHaveAttribute(
+      "href",
+      "https://github.com/panic-z/video-downloader"
+    );
+    expect(screen.queryByLabelText("Video URL")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Analyze" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Formats" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Downloads" })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("shows dependency checking feedback while health is pending", async () => {
@@ -387,7 +407,7 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
   });
 
-  it("disables downloader actions and shows local-first guidance on Vercel", async () => {
+  it("switches to the hosted guidance page when health reports Vercel mode", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
       jsonResponse({
         mode: "vercel",
@@ -404,9 +424,15 @@ describe("HomePage", () => {
     render(<HomePage />);
     await user.type(screen.getByLabelText("Video URL"), "https://youtu.be/id");
 
-    expect(await screen.findByText(/Run this app locally/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
+    expect(await screen.findByRole("heading", { name: "Run locally" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "GitHub repository" })).toHaveAttribute(
+      "href",
+      "https://github.com/panic-z/video-downloader"
+    );
+    expect(screen.queryByLabelText("Video URL")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Analyze" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Formats" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Downloads" })).not.toBeInTheDocument();
   });
 
   it("polls active downloads until completion and keeps terminal jobs idle", async () => {

@@ -42,6 +42,39 @@ input[type="radio"] {
   margin: 0 auto 20px;
 }
 
+.hostedShell {
+  display: grid;
+  place-items: center;
+}
+
+.hostedEntry {
+  width: min(100%, 680px);
+  display: grid;
+  gap: 14px;
+}
+
+.hostedEntry h1,
+.hostedEntry p {
+  margin: 0;
+}
+
+.hostedEntry h1 {
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.hostedEntry p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.githubAddress {
+  color: var(--text);
+  overflow-wrap: anywhere;
+  text-underline-offset: 3px;
+}
+
 .hero h1 {
   margin: 0 0 8px;
   font-size: 30px;

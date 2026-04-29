@@ -17,9 +17,14 @@ type HealthResult = {
 };
 
 const appBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/video-downloader";
+const githubUrl = "https://github.com/panic-z/video-downloader";
 
 function apiPath(path: `/api/${string}`) {
   return `${appBasePath}${path}`;
+}
+
+function getInitialRuntimeMode(): RuntimeMode {
+  return process.env.NEXT_PUBLIC_RUNTIME_MODE === "vercel" ? "vercel" : "local";
 }
 
 async function readJson(response: Response) {
@@ -141,6 +146,21 @@ function isHealthResult(data: unknown): data is HealthResult {
   );
 }
 
+function HostedEntryPage() {
+  return (
+    <main className="shell hostedShell">
+      <section className="hostedEntry">
+        <h1>Run locally</h1>
+        <p>This hosted page does not run video downloads. Please run the project on your machine.</p>
+        <p>当前托管页面不提供云端下载，请在本机运行项目。</p>
+        <a className="githubAddress" href={githubUrl} aria-label="GitHub repository">
+          {githubUrl}
+        </a>
+      </section>
+    </main>
+  );
+}
+
 export default function HomePage() {
   const [url, setUrl] = useState("");
   const [analysis, setAnalysis] = useState<AnalyzeResult | null>(null);
@@ -152,7 +172,7 @@ export default function HomePage() {
   const [dependenciesChecking, setDependenciesChecking] = useState(true);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
-  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("local");
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>(() => getInitialRuntimeMode());
   const analyzeRequestId = useRef(0);
 
   const selectedFormat = useMemo(
@@ -265,6 +285,12 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    if (runtimeMode === "vercel") {
+      setDependenciesReady(false);
+      setDependenciesChecking(false);
+      return;
+    }
+
     let cancelled = false;
 
     async function checkHealth() {
@@ -323,7 +349,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [runtimeMode]);
 
   useEffect(() => {
     const activeJobs = jobs.filter((job) => job.status === "queued" || job.status === "running");
@@ -369,6 +395,8 @@ export default function HomePage() {
 
     return () => window.clearInterval(interval);
   }, [jobs]);
+
+  if (runtimeMode === "vercel") return <HostedEntryPage />;
 
   return (
     <main className="shell">
