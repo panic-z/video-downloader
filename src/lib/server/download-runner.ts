@@ -11,7 +11,7 @@ import {
   type BinaryPaths
 } from "./binaries";
 import type { createJobStore } from "./job-store";
-import { buildDownloadArgs } from "./yt-dlp";
+import { buildDownloadArgs, formatYtDlpError } from "./yt-dlp";
 
 type JobStore = ReturnType<typeof createJobStore>;
 type SpawnFn = typeof nodeSpawn;
@@ -166,9 +166,10 @@ export function startDownload(input: {
 
     setTerminalState({
       status: "failed",
-      error:
+      error: formatYtDlpError(
         errorOutput.trim() ||
-        (signal ? `yt-dlp was terminated by signal ${signal}` : `yt-dlp exited with code ${code}`)
+          (signal ? `yt-dlp was terminated by signal ${signal}` : `yt-dlp exited with code ${code}`)
+      )
     });
   });
 }

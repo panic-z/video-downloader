@@ -29,7 +29,13 @@ describe("fetchVideoInfo", () => {
     await expect(fetchVideoInfo("https://youtu.be/id", run)).resolves.toMatchObject({
       video: { id: "id", title: "Title" }
     });
-    expect(run).toHaveBeenCalledWith("yt-dlp", ["--dump-single-json", "--no-playlist", "https://youtu.be/id"]);
+    expect(run).toHaveBeenCalledWith("yt-dlp", [
+      "--dump-single-json",
+      "--no-playlist",
+      "--js-runtimes",
+      `node:${process.execPath}`,
+      "https://youtu.be/id"
+    ]);
   });
 
   it("throws a readable error for invalid JSON", async () => {
@@ -55,6 +61,18 @@ describe("fetchVideoInfo", () => {
     await expect(result).rejects.toThrow("normalization syntax error");
     await expect(result).rejects.not.toThrow("yt-dlp returned invalid JSON");
   });
+
+  it("maps YouTube bot challenges to a concise cloud deployment error", async () => {
+    const run = vi.fn().mockRejectedValue(
+      new Error(
+        "Command failed: yt-dlp ERROR: [youtube] hk45oZ292Rg: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication."
+      )
+    );
+
+    await expect(fetchVideoInfo("https://youtu.be/hk45oZ292Rg", run)).rejects.toThrow(
+      "YouTube blocked this cloud request with a bot or sign-in challenge."
+    );
+  });
 });
 
 describe("buildDownloadArgs", () => {
@@ -71,6 +89,8 @@ describe("buildDownloadArgs", () => {
       "--no-playlist",
       "-f",
       "18",
+      "--js-runtimes",
+      `node:${process.execPath}`,
       "--ffmpeg-location",
       "/opt/ffmpeg/ffmpeg",
       "--merge-output-format",
