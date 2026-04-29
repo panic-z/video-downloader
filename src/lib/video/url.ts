@@ -5,9 +5,9 @@ type ParsedUrlResult =
   | { ok: false; error: string };
 
 export function detectVideoSource(url: URL): VideoSource {
-  const host = url.hostname.toLowerCase().replace(/^www\./, "");
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
 
-  if (host === "youtube.com" || host === "m.youtube.com" || host === "youtu.be") {
+  if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be") {
     return "youtube";
   }
 

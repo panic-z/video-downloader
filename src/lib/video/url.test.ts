@@ -8,6 +8,12 @@ describe("parseSupportedVideoUrl", () => {
     if (result.ok) expect(result.source).toBe("youtube");
   });
 
+  it("accepts YouTube subdomain URLs", () => {
+    const result = parseSupportedVideoUrl("https://music.youtube.com/watch?v=abc123");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.source).toBe("youtube");
+  });
+
   it("accepts Bilibili video URLs", () => {
     const result = parseSupportedVideoUrl("https://www.bilibili.com/video/BV1xx411c7mD");
     expect(result.ok).toBe(true);
@@ -16,6 +22,10 @@ describe("parseSupportedVideoUrl", () => {
 
   it("rejects unsupported hosts", () => {
     expect(parseSupportedVideoUrl("https://example.com/video").ok).toBe(false);
+  });
+
+  it("rejects hosts that only end with youtube-like text", () => {
+    expect(parseSupportedVideoUrl("https://evil-youtube.com/watch?v=abc123").ok).toBe(false);
   });
 
   it("rejects invalid URL text", () => {
