@@ -45,7 +45,7 @@ describe("normalizeYtDlpInfo", () => {
     expect(result.formats[0]).toMatchObject({
       id: "137",
       downloadSelector: "137+bestaudio/best",
-      label: "1080p mp4 video",
+      label: "1080p mp4 video+audio",
       height: 1080,
       extension: "mp4",
       hasVideo: true,
@@ -125,7 +125,7 @@ describe("normalizeYtDlpInfo", () => {
 
     expect(result.formats[0]).toMatchObject({
       id: "video-no-height",
-      label: "unknown mp4 video",
+      label: "unknown mp4 video+audio",
       hasVideo: true,
       hasAudio: false,
       height: null
@@ -158,9 +158,118 @@ describe("normalizeYtDlpInfo", () => {
       ]
     });
 
-    expect(result.formats.map((format) => format.label)).toEqual([
-      "1080p mp4 video+audio · 1080P 60 · 60fps · 4200kbps · id 302",
-      "1080p mp4 video+audio · 1080P · 30fps · 2400kbps · id 301"
+    expect(result.formats.map((format) => ({
+      id: format.id,
+      label: format.label
+    }))).toEqual([
+      {
+        id: "302",
+        label: "1080p 60fps mp4 video+audio"
+      }
+    ]);
+  });
+
+  it("uses the display quality instead of landscape width for Bilibili-style formats", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "137",
+          ext: "mp4",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          fps: 30,
+          tbr: 1974,
+          vcodec: "avc1",
+          acodec: "none",
+          filesize: 15_728_640
+        }
+      ]
+    });
+
+    expect(result.formats[0]).toMatchObject({
+      id: "137",
+      height: 1080,
+      label: "1080p mp4 video+audio"
+    });
+  });
+
+  it("keeps one recommended video option per display quality", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "137",
+          ext: "mp4",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          fps: 30,
+          tbr: 1974,
+          vcodec: "avc1",
+          acodec: "none",
+          filesize: 15_728_640
+        },
+        {
+          format_id: "399",
+          ext: "mp4",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          fps: 30,
+          tbr: 1342,
+          vcodec: "av01",
+          acodec: "none",
+          filesize: 10_485_760
+        },
+        {
+          format_id: "248",
+          ext: "webm",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          vcodec: "vp9",
+          acodec: "none",
+          filesize: 12_582_912
+        },
+        {
+          format_id: "22",
+          ext: "mp4",
+          height: 1280,
+          width: 720,
+          format_note: "720p",
+          vcodec: "avc1",
+          acodec: "mp4a"
+        },
+        {
+          format_id: "136",
+          ext: "mp4",
+          height: 1280,
+          width: 720,
+          format_note: "720p",
+          fps: 30,
+          tbr: 932,
+          vcodec: "avc1",
+          acodec: "none",
+          filesize: 7_340_032
+        }
+      ]
+    });
+
+    expect(result.formats.map((format) => ({
+      id: format.id,
+      label: format.label,
+      downloadSelector: format.downloadSelector
+    }))).toEqual([
+      {
+        id: "137",
+        label: "1080p mp4 video+audio",
+        downloadSelector: "137+bestaudio/best"
+      },
+      {
+        id: "22",
+        label: "720p mp4 video+audio",
+        downloadSelector: "22"
+      }
     ]);
   });
 

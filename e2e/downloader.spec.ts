@@ -33,6 +33,24 @@ const analysisResult = {
   ]
 };
 
+async function expectDownloadsBesideFormats(page: import("@playwright/test").Page) {
+  const formatsBox = await page
+    .locator(".panel")
+    .filter({ has: page.getByRole("heading", { name: "Formats" }) })
+    .boundingBox();
+  const downloadsBox = await page
+    .locator(".panel")
+    .filter({ has: page.getByRole("heading", { name: "Downloads" }) })
+    .boundingBox();
+
+  expect(formatsBox).not.toBeNull();
+  expect(downloadsBox).not.toBeNull();
+  if (!formatsBox || !downloadsBox) return;
+
+  expect(Math.abs(downloadsBox.y - formatsBox.y)).toBeLessThan(8);
+  expect(downloadsBox.x).toBeGreaterThan(formatsBox.x);
+}
+
 test("analyzes a URL, displays distinct formats, starts a download, and exposes the file link", async ({
   page
 }) => {
@@ -94,6 +112,7 @@ test("analyzes a URL, displays distinct formats, starts a download, and exposes 
   });
 
   await page.goto("/");
+  await expectDownloadsBesideFormats(page);
   await page.getByLabel("Video URL").fill(videoUrl);
   await expect(page.getByRole("button", { name: "Analyze" })).toBeEnabled();
 

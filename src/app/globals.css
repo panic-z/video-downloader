@@ -51,8 +51,7 @@ input {
   overflow-wrap: anywhere;
 }
 
-.panel:first-child,
-.panel:last-child {
+.panel:first-child {
   grid-column: 1 / -1;
 }
 
