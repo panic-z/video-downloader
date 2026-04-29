@@ -106,12 +106,13 @@ function normalizeFormat(raw: unknown): NormalizedFormat | null {
 }
 
 function formatScore(format: NormalizedFormat): number {
-  const extensionScore = format.extension === "mp4" || format.extension === "m4a" ? 20_000 : 0;
-  const audioScore = format.hasAudio ? 100_000 : 0;
+  const extensionScore = format.extension === "mp4" || format.extension === "m4a" ? 100_000 : 0;
+  const knownSizeScore = format.sizeBytes ? 50_000 : 0;
+  const bitrateScore = format.bitrateKbps ? Math.round(format.bitrateKbps) * 10 : 0;
   const fpsScore = format.fps ? Math.round(format.fps) * 100 : 0;
-  const bitrateScore = format.bitrateKbps ? Math.round(format.bitrateKbps) : 0;
   const sizeScore = format.sizeBytes ? Math.min(Math.round(format.sizeBytes / 1024 / 1024), 10_000) : 0;
-  return audioScore + extensionScore + fpsScore + bitrateScore + sizeScore;
+  const audioTieBreaker = format.hasAudio ? 100 : 0;
+  return extensionScore + knownSizeScore + bitrateScore + fpsScore + sizeScore + audioTieBreaker;
 }
 
 function dedupeDownloadChoices(formats: NormalizedFormat[]): NormalizedFormat[] {

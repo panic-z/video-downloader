@@ -5,6 +5,14 @@ import { jsonError } from "@/lib/server/api-errors";
 import { resolveCompletedFile } from "@/lib/server/files";
 import { jobStore } from "@/lib/server/job-store";
 
+function attachmentDisposition(fileName: string): string {
+  const fallback = fileName
+    .replace(/[^\x20-\x7e]/g, "_")
+    .replace(/["\\;]/g, "_")
+    .trim() || "download";
+  return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   const file = resolveCompletedFile(jobStore.get(id));
@@ -17,7 +25,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     return new NextResponse(stream, {
       headers: {
         "Content-Type": "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(file.fileName)}"`
+        "Content-Disposition": attachmentDisposition(file.fileName)
       }
     });
   } catch {

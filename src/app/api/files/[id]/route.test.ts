@@ -78,10 +78,32 @@ describe("GET /api/files/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("application/octet-stream");
-    expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="video.mp4"');
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="video.mp4"; filename*=UTF-8\'\'video.mp4'
+    );
     expect(open).toHaveBeenCalledWith("/tmp/video.mp4", "r");
     expect(createReadStream).toHaveBeenCalledWith();
     expect(readFile).not.toHaveBeenCalled();
     expect(await response.arrayBuffer()).toEqual(new Uint8Array([1, 2, 3]).buffer);
+  });
+
+  it("uses an encoded filename parameter with an ASCII fallback for non-ASCII downloads", async () => {
+    const createReadStream = vi.fn(() => Readable.from([new Uint8Array([1])]));
+    resolveCompletedFile.mockReturnValue({
+      path: "/tmp/video.mp4",
+      fileName: "测试 视频.mp4"
+    });
+    open.mockResolvedValueOnce({
+      createReadStream
+    });
+
+    const response = await GET(new Request("http://localhost/api/files/job-test"), {
+      params: Promise.resolve({ id: "job-test" })
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="__ __.mp4"; filename*=UTF-8\'\'%E6%B5%8B%E8%AF%95%20%E8%A7%86%E9%A2%91.mp4'
+    );
   });
 });

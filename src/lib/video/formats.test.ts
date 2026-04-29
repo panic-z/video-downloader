@@ -266,9 +266,47 @@ describe("normalizeYtDlpInfo", () => {
         downloadSelector: "137+bestaudio/best"
       },
       {
-        id: "22",
+        id: "136",
         label: "720p mp4 video+audio",
-        downloadSelector: "22"
+        downloadSelector: "136+bestaudio/best"
+      }
+    ]);
+  });
+
+  it("does not prefer unknown-size combined streams over concrete video streams", () => {
+    const result = normalizeYtDlpInfo({
+      formats: [
+        {
+          format_id: "combined-1080",
+          ext: "mp4",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          vcodec: "avc1",
+          acodec: "mp4a"
+        },
+        {
+          format_id: "137",
+          ext: "mp4",
+          height: 1920,
+          width: 1080,
+          format_note: "1080p",
+          fps: 30,
+          tbr: 1974,
+          vcodec: "avc1",
+          acodec: "none",
+          filesize: 15_728_640
+        }
+      ]
+    });
+
+    expect(result.formats.map((format) => ({
+      id: format.id,
+      downloadSelector: format.downloadSelector
+    }))).toEqual([
+      {
+        id: "137",
+        downloadSelector: "137+bestaudio/best"
       }
     ]);
   });
