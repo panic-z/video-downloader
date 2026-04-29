@@ -1,5 +1,5 @@
 import { spawn as nodeSpawn, type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { buildDownloadFileName } from "@/lib/video/filenames";
 import { parseDownloadProgress } from "@/lib/video/progress";
@@ -12,6 +12,7 @@ type SpawnFn = typeof nodeSpawn;
 
 const MAX_ERROR_OUTPUT_LENGTH = 4096;
 const MAX_STDOUT_LINE_LENGTH = 4096;
+const MAX_COMPLETED_DOWNLOAD_FILES = 10;
 
 function resolveCompletedOutput(downloadDir: string, outputStem: string) {
   try {
@@ -31,6 +32,33 @@ function resolveCompletedOutput(downloadDir: string, outputStem: string) {
   }
 
   return null;
+}
+
+function pruneOldDownloadFiles(downloadDir: string, preserveFilePath: string) {
+  const preservePath = path.resolve(preserveFilePath);
+
+  try {
+    const files = readdirSync(downloadDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => {
+        const filePath = path.join(downloadDir, entry.name);
+        return {
+          filePath,
+          mtimeMs: statSync(filePath).mtimeMs
+        };
+      })
+      .sort((a, b) => a.mtimeMs - b.mtimeMs);
+
+    const deleteCount = files.length - MAX_COMPLETED_DOWNLOAD_FILES;
+    if (deleteCount <= 0) return;
+
+    const candidates = files.filter((file) => path.resolve(file.filePath) !== preservePath);
+    for (const file of candidates.slice(0, deleteCount)) {
+      unlinkSync(file.filePath);
+    }
+  } catch {
+    // Cleanup is best-effort; it should not turn a finished download into a failed job.
+  }
 }
 
 export function startDownload(input: {
@@ -113,6 +141,7 @@ export function startDownload(input: {
     if (code === 0) {
       const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem);
       if (completedOutput) {
+        pruneOldDownloadFiles(input.downloadDir, completedOutput.filePath);
         setTerminalState({ status: "completed", progress: 100, ...completedOutput });
         return;
       }

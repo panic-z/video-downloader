@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -95,6 +95,45 @@ describe("startDownload", () => {
       fileName: `${outputStem}.mp4`,
       filePath: path.join(downloadDir, `${outputStem}.mp4`)
     });
+  });
+
+  it("keeps only the 10 newest local download files after a successful completion", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Newest" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+    const downloadDir = mkdtempSync(path.join(tmpdir(), "video-downloader-"));
+    const oldestFile = path.join(downloadDir, "old-0.mp4");
+
+    for (let index = 0; index < 10; index += 1) {
+      const filePath = path.join(downloadDir, `old-${index}.mp4`);
+      writeFileSync(filePath, `old ${index}`);
+      const timestamp = new Date(1000 + index * 1000);
+      utimesSync(filePath, timestamp, timestamp);
+    }
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir,
+      store,
+      spawn
+    });
+
+    const currentFileName = store.get(job.jobId)?.fileName ?? "missing.mp4";
+    const currentFilePath = path.join(downloadDir, currentFileName);
+    writeFileSync(currentFilePath, "newest");
+    const timestamp = new Date(20_000);
+    utimesSync(currentFilePath, timestamp, timestamp);
+    proc.emit("close", 0);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(readdirSync(downloadDir).filter((fileName) => fileName.endsWith(".mp4"))).toHaveLength(10);
+    expect(existsSync(oldestFile)).toBe(false);
+    expect(existsSync(currentFilePath)).toBe(true);
+    expect(store.get(job.jobId)).toMatchObject({ status: "completed", filePath: currentFilePath });
   });
 
   it("marks a job failed when yt-dlp exits successfully without producing a file", async () => {
