@@ -1,8 +1,7 @@
-import path from "node:path";
-import { tmpdir } from "node:os";
 import { NextResponse } from "next/server";
 import { parseSupportedVideoUrl } from "@/lib/video/url";
 import { jsonError, readJsonBody } from "@/lib/server/api-errors";
+import { getDownloadDir, getRuntimeMode, localFirstWarning } from "@/lib/server/runtime";
 import { jobStore } from "@/lib/server/job-store";
 import { startDownload } from "@/lib/server/download-runner";
 
@@ -10,11 +9,6 @@ const FORMAT_ID_PATTERN = /^[A-Za-z0-9._:+/,-]{1,120}$/;
 
 function validFormatId(value: string): boolean {
   return FORMAT_ID_PATTERN.test(value);
-}
-
-function getDownloadDir() {
-  if (process.env.VERCEL) return path.join(tmpdir(), "video-downloader-downloads");
-  return path.join(process.cwd(), "downloads");
 }
 
 export async function POST(request: Request) {
@@ -36,6 +30,10 @@ export async function POST(request: Request) {
 
   const parsed = parseSupportedVideoUrl(body.url);
   if (!parsed.ok) return jsonError(parsed.error, 400);
+
+  if (getRuntimeMode() === "vercel") {
+    return jsonError(localFirstWarning, 409);
+  }
 
   const formatId = body.formatId.trim();
   if (!validFormatId(formatId)) {

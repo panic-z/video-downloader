@@ -1,5 +1,3 @@
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { job, jobStore, startDownload } = vi.hoisted(() => {
@@ -132,7 +130,7 @@ describe("POST /api/downloads", () => {
     });
   });
 
-  it("uses a writable temporary download directory on Vercel", async () => {
+  it("returns a local-first error on Vercel", async () => {
     process.env.VERCEL = "1";
 
     const response = await POST(new Request("http://localhost/api/downloads", {
@@ -145,12 +143,12 @@ describe("POST /api/downloads", () => {
       })
     }));
 
-    expect(response.status).toBe(200);
-    expect(startDownload).toHaveBeenCalledWith(
-      expect.objectContaining({
-        downloadDir: path.join(tmpdir(), "video-downloader-downloads")
-      })
-    );
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: expect.stringContaining("Run this app locally")
+    });
+    expect(jobStore.create).not.toHaveBeenCalled();
+    expect(startDownload).not.toHaveBeenCalled();
   });
 
   it("marks the job failed and returns a structured error when startup fails", async () => {
