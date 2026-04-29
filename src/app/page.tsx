@@ -9,6 +9,12 @@ type DependencyView = {
   name: string;
   available: boolean;
 };
+type RuntimeMode = "local" | "vercel";
+type HealthResult = {
+  mode?: RuntimeMode;
+  warning?: string;
+  dependencies: DependencyView[];
+};
 
 const appBasePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "/video-downloader";
 
@@ -38,6 +44,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isRuntimeMode(value: unknown): value is RuntimeMode {
+  return value === "local" || value === "vercel";
+}
+
+function isDependencyView(value: unknown): value is DependencyView {
+  return isRecord(value) && typeof value.name === "string" && typeof value.available === "boolean";
 }
 
 function isNullableNonNegativeNumber(value: unknown): value is number | null {
@@ -117,21 +131,13 @@ function isDownloadStart(data: unknown): data is Pick<JobView, "jobId" | "status
   );
 }
 
-function isHealthResult(data: unknown): data is { dependencies: DependencyView[] } {
+function isHealthResult(data: unknown): data is HealthResult {
   return Boolean(
-    data &&
-      typeof data === "object" &&
-      "dependencies" in data &&
+    isRecord(data) &&
+      (!("mode" in data) || isRuntimeMode(data.mode)) &&
+      (!("warning" in data) || typeof data.warning === "string") &&
       Array.isArray(data.dependencies) &&
-      data.dependencies.every(
-        (dependency) =>
-          dependency &&
-          typeof dependency === "object" &&
-          "name" in dependency &&
-          typeof dependency.name === "string" &&
-          "available" in dependency &&
-          typeof dependency.available === "boolean"
-      )
+      data.dependencies.every(isDependencyView)
   );
 }
 
@@ -146,6 +152,7 @@ export default function HomePage() {
   const [dependenciesChecking, setDependenciesChecking] = useState(true);
   const [dependenciesReady, setDependenciesReady] = useState(false);
   const [dependencyMessage, setDependencyMessage] = useState<string | null>(null);
+  const [runtimeMode, setRuntimeMode] = useState<RuntimeMode>("local");
   const analyzeRequestId = useRef(0);
 
   const selectedFormat = useMemo(
@@ -153,7 +160,7 @@ export default function HomePage() {
     [analysis, selectedFormatId]
   );
 
-  const actionsDisabled = Boolean(busyAction) || !dependenciesReady;
+  const actionsDisabled = Boolean(busyAction) || !dependenciesReady || runtimeMode !== "local";
 
   function handleUrlChange(nextUrl: string) {
     analyzeRequestId.current += 1;
@@ -267,7 +274,20 @@ export default function HomePage() {
         if (cancelled) return;
 
         if (!response.ok || !isHealthResult(data)) {
+          setDependenciesReady(false);
           setDependencyMessage("Could not verify downloader dependencies. Install yt-dlp and ffmpeg, then refresh.");
+          return;
+        }
+
+        const nextMode = data.mode ?? "local";
+        setRuntimeMode(nextMode);
+
+        if (nextMode === "vercel") {
+          setDependenciesReady(false);
+          setDependencyMessage(
+            data.warning ??
+              "This Vercel deployment is only an entry point. Run this app locally to analyze and download videos from your own machine."
+          );
           return;
         }
 
@@ -276,6 +296,7 @@ export default function HomePage() {
           .map((dependency) => dependency.name);
 
         if (missing.length > 0) {
+          setDependenciesReady(false);
           const label = missing.length === 1 ? "dependency" : "dependencies";
           setDependencyMessage(
             `Missing ${label}: ${missing.join(", ")}. Install yt-dlp and ffmpeg to enable downloads.`
@@ -287,6 +308,7 @@ export default function HomePage() {
         setDependenciesReady(true);
       } catch {
         if (!cancelled) {
+          setDependenciesReady(false);
           setDependencyMessage("Could not verify downloader dependencies. Install yt-dlp and ffmpeg, then refresh.");
         }
       } finally {

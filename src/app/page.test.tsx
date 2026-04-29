@@ -387,6 +387,28 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
   });
 
+  it("disables downloader actions and shows local-first guidance on Vercel", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      jsonResponse({
+        mode: "vercel",
+        warning:
+          "This Vercel deployment is only an entry point. Run this app locally to analyze and download videos from your own machine.",
+        dependencies: [
+          { name: "yt-dlp", available: true },
+          { name: "ffmpeg", available: true }
+        ]
+      })
+    );
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://youtu.be/id");
+
+    expect(await screen.findByText(/Run this app locally/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Analyze" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Download selected format" })).toBeDisabled();
+  });
+
   it("polls active downloads until completion and keeps terminal jobs idle", async () => {
     vi.useFakeTimers();
     const fetchMock = mockFetchWithHealth(
