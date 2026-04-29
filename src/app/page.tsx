@@ -34,8 +34,8 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function isNullableFiniteNumber(value: unknown): value is number | null {
-  return value === null || (typeof value === "number" && Number.isFinite(value));
+function isNullableNonNegativeNumber(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0);
 }
 
 function isVideoSource(value: unknown): value is AnalyzeResult["video"]["source"] {
@@ -48,7 +48,7 @@ function isVideoInfo(value: unknown): value is AnalyzeResult["video"] {
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.title) &&
     isVideoSource(value.source) &&
-    isNullableFiniteNumber(value.durationSeconds)
+    isNullableNonNegativeNumber(value.durationSeconds)
   );
 }
 
@@ -58,11 +58,11 @@ function isVideoFormat(value: unknown): value is VideoFormat {
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.downloadSelector) &&
     isNonEmptyString(value.label) &&
-    isNullableFiniteNumber(value.height) &&
+    isNullableNonNegativeNumber(value.height) &&
     (value.extension === null || isNonEmptyString(value.extension)) &&
     typeof value.hasVideo === "boolean" &&
     typeof value.hasAudio === "boolean" &&
-    isNullableFiniteNumber(value.sizeBytes)
+    isNullableNonNegativeNumber(value.sizeBytes)
   );
 }
 
