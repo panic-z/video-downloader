@@ -10,6 +10,8 @@ import { buildDownloadArgs } from "./yt-dlp";
 type JobStore = ReturnType<typeof createJobStore>;
 type SpawnFn = typeof nodeSpawn;
 
+const MAX_ERROR_OUTPUT_LENGTH = 4096;
+
 function resolveCompletedOutput(downloadDir: string, outputStem: string) {
   try {
     const match = readdirSync(downloadDir, { withFileTypes: true })
@@ -60,7 +62,7 @@ export function startDownload(input: {
   });
 
   const child = spawn("yt-dlp", args) as ChildProcessWithoutNullStreams;
-  let lastError = "";
+  let errorOutput = "";
   let terminalStateSet = false;
 
   function setTerminalState(patch: Partial<DownloadJob>) {
@@ -78,7 +80,10 @@ export function startDownload(input: {
   });
 
   child.stderr.on("data", (chunk) => {
-    lastError = String(chunk).trim() || lastError;
+    errorOutput = `${errorOutput}${String(chunk)}`;
+    if (errorOutput.length > MAX_ERROR_OUTPUT_LENGTH) {
+      errorOutput = errorOutput.slice(-MAX_ERROR_OUTPUT_LENGTH);
+    }
   });
 
   child.on("error", (error) => {
@@ -105,7 +110,9 @@ export function startDownload(input: {
 
     setTerminalState({
       status: "failed",
-      error: lastError || (signal ? `yt-dlp was terminated by signal ${signal}` : `yt-dlp exited with code ${code}`)
+      error:
+        errorOutput.trim() ||
+        (signal ? `yt-dlp was terminated by signal ${signal}` : `yt-dlp exited with code ${code}`)
     });
   });
 }

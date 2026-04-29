@@ -124,6 +124,33 @@ describe("startDownload", () => {
     expect(store.get(job.jobId)).toMatchObject({ status: "failed", error: "format unavailable" });
   });
 
+  it("preserves yt-dlp error output split across stderr chunks", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir: "/tmp/downloads",
+      store,
+      spawn
+    });
+
+    proc.stderr.emit("data", Buffer.from("ERROR: format "));
+    proc.stderr.emit("data", Buffer.from("unavailable"));
+    proc.emit("close", 1);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(store.get(job.jobId)).toMatchObject({
+      status: "failed",
+      error: "ERROR: format unavailable"
+    });
+  });
+
   it("reports the terminating signal when yt-dlp is killed", async () => {
     const store = createJobStore(() => 1000);
     const job = store.create({ title: "Title" });
