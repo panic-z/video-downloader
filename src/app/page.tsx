@@ -44,6 +44,10 @@ function isDownloadStartStatus(value: unknown): value is DownloadStartStatus {
   return value === "queued" || value === "running";
 }
 
+function isProgressPercent(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+
 function isJobView(data: unknown): data is JobView {
   return Boolean(
     data &&
@@ -53,7 +57,7 @@ function isJobView(data: unknown): data is JobView {
       "status" in data &&
       isDownloadJobStatus(data.status) &&
       "progress" in data &&
-      typeof data.progress === "number"
+      isProgressPercent(data.progress)
   );
 }
 
