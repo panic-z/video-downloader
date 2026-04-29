@@ -26,13 +26,52 @@ function messageFromResponse(data: unknown, fallback: string) {
   return fallback;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNullableFiniteNumber(value: unknown): value is number | null {
+  return value === null || (typeof value === "number" && Number.isFinite(value));
+}
+
+function isVideoSource(value: unknown): value is AnalyzeResult["video"]["source"] {
+  return value === "youtube" || value === "bilibili" || value === "other";
+}
+
+function isVideoInfo(value: unknown): value is AnalyzeResult["video"] {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.title) &&
+    isVideoSource(value.source) &&
+    isNullableFiniteNumber(value.durationSeconds)
+  );
+}
+
+function isVideoFormat(value: unknown): value is VideoFormat {
+  return (
+    isRecord(value) &&
+    isNonEmptyString(value.id) &&
+    isNonEmptyString(value.downloadSelector) &&
+    isNonEmptyString(value.label) &&
+    isNullableFiniteNumber(value.height) &&
+    (value.extension === null || isNonEmptyString(value.extension)) &&
+    typeof value.hasVideo === "boolean" &&
+    typeof value.hasAudio === "boolean" &&
+    isNullableFiniteNumber(value.sizeBytes)
+  );
+}
+
 function isAnalyzeResult(data: unknown): data is AnalyzeResult {
   return Boolean(
-    data &&
-      typeof data === "object" &&
-      "video" in data &&
-      "formats" in data &&
-      Array.isArray(data.formats)
+    isRecord(data) &&
+      isVideoInfo(data.video) &&
+      Array.isArray(data.formats) &&
+      data.formats.every(isVideoFormat)
   );
 }
 

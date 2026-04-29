@@ -194,6 +194,33 @@ describe("HomePage", () => {
     expect(screen.getByRole("button", { name: "Analyze" })).toBeEnabled();
   });
 
+  it("rejects malformed format entries from analyze responses", async () => {
+    mockFetchWithHealth(
+      jsonResponse({
+        ...analysisResult,
+        formats: [
+          {
+            label: "1080p mp4 video",
+            height: 1080,
+            extension: "mp4",
+            hasVideo: true,
+            hasAudio: true,
+            sizeBytes: 20971520
+          }
+        ]
+      })
+    );
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+    await user.type(screen.getByLabelText("Video URL"), "https://example.com/watch?v=1");
+    await user.click(screen.getByRole("button", { name: "Analyze" }));
+
+    expect(await screen.findByText("Failed to analyze video.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "A very long demo video title" })).not.toBeInTheDocument();
+    expect(screen.queryByText("1080p mp4 video")).not.toBeInTheDocument();
+  });
+
   it("shows an explicit message when analysis returns no formats", async () => {
     mockFetchWithHealth(
       jsonResponse({
