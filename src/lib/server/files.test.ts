@@ -11,8 +11,15 @@ describe("resolveCompletedFile", () => {
   });
 
   it("returns a completed existing file path", () => {
-    const exists = vi.fn().mockReturnValue(true);
+    const stat = vi.fn().mockReturnValue({ isFile: () => true });
     const job = { status: "completed", filePath: "/tmp/a.mp4", fileName: "a.mp4" } as any;
-    expect(resolveCompletedFile(job, exists)).toEqual({ path: "/tmp/a.mp4", fileName: "a.mp4" });
+    expect(resolveCompletedFile(job, stat)).toEqual({ path: "/tmp/a.mp4", fileName: "a.mp4" });
+  });
+
+  it("returns null when the completed path is not a regular file", () => {
+    const stat = vi.fn().mockReturnValue({ isFile: () => false });
+    const job = { status: "completed", filePath: "/tmp/a.mp4", fileName: "a.mp4" } as any;
+
+    expect(resolveCompletedFile(job, stat)).toBeNull();
   });
 });
