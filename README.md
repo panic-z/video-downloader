@@ -22,12 +22,11 @@ A local web app for analyzing and downloading public YouTube and Bilibili videos
 
 - Node.js
 - npm
-- `yt-dlp`
-- `ffmpeg`
+- Packaged `yt-dlp` and `ffmpeg` binaries installed by npm
 
-The app checks for `yt-dlp` and `ffmpeg` on startup. Downloads are disabled if either dependency is missing.
+The app checks for `yt-dlp` and `ffmpeg` on startup. The npm install step downloads packaged binaries for deployments such as Vercel; if those are unavailable, the app falls back to system `yt-dlp` and `ffmpeg` commands.
 
-应用启动后会检测 `yt-dlp` 和 `ffmpeg`。如果缺少依赖，网页会禁用分析/下载操作并显示提示。
+应用启动后会检测 `yt-dlp` 和 `ffmpeg`。`npm install` 会下载适合 Vercel 等部署环境使用的内置二进制；如果内置二进制不可用，应用会回退到系统里的 `yt-dlp` 和 `ffmpeg` 命令。
 
 ## Install / 安装
 
@@ -35,9 +34,9 @@ The app checks for `yt-dlp` and `ffmpeg` on startup. Downloads are disabled if e
 npm install
 ```
 
-Install `yt-dlp` and `ffmpeg` separately, for example with Homebrew on macOS:
+Optional local fallback if npm binary installation is skipped:
 
-`yt-dlp` 和 `ffmpeg` 需要单独安装。macOS 可以使用 Homebrew：
+如果跳过了 npm 内置二进制安装，可以在本地额外安装系统命令作为备用：
 
 ```bash
 brew install yt-dlp ffmpeg
@@ -82,6 +81,10 @@ Downloaded videos are saved under:
 ```text
 downloads/
 ```
+
+On Vercel, downloaded files are saved under the function temporary directory instead because the deployed project directory is read-only.
+
+Vercel 部署环境中，下载文件会保存到函数临时目录，因为部署后的项目目录不可写。
 
 The `downloads/` directory is ignored by Git. After each successful download, the app keeps the 10 newest files in that directory and deletes older files. Failed or unfinished downloads do not trigger cleanup.
 

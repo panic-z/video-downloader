@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath
   },
+  outputFileTracingIncludes: {
+    "/*": [
+      "./node_modules/youtube-dl-exec/bin/**/*",
+      "./node_modules/ffmpeg-static/ffmpeg"
+    ]
+  },
   async redirects() {
     if (!basePath) return [];
 

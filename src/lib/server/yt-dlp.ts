@@ -25,12 +25,14 @@ export function buildDownloadArgs(input: {
   url: string;
   formatId: string;
   outputTemplate: string;
+  ffmpegLocation?: string;
 }): string[] {
   return [
     "--newline",
     "--no-playlist",
     "-f",
     input.formatId,
+    ...(input.ffmpegLocation ? ["--ffmpeg-location", input.ffmpegLocation] : []),
     "--merge-output-format",
     "mp4",
     "-o",

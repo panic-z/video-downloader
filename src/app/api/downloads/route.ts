@@ -1,4 +1,5 @@
 import path from "node:path";
+import { tmpdir } from "node:os";
 import { NextResponse } from "next/server";
 import { parseSupportedVideoUrl } from "@/lib/video/url";
 import { jsonError, readJsonBody } from "@/lib/server/api-errors";
@@ -9,6 +10,11 @@ const FORMAT_ID_PATTERN = /^[A-Za-z0-9._:+/,-]{1,120}$/;
 
 function validFormatId(value: string): boolean {
   return FORMAT_ID_PATTERN.test(value);
+}
+
+function getDownloadDir() {
+  if (process.env.VERCEL) return path.join(tmpdir(), "video-downloader-downloads");
+  return path.join(process.cwd(), "downloads");
 }
 
 export async function POST(request: Request) {
@@ -46,7 +52,7 @@ export async function POST(request: Request) {
       url: parsed.url,
       formatId,
       extension,
-      downloadDir: path.join(process.cwd(), "downloads"),
+      downloadDir: getDownloadDir(),
       store: jobStore
     });
   } catch (error) {

@@ -65,6 +65,37 @@ describe("startDownload", () => {
     expect(store.get(job.jobId)).toMatchObject({ status: "running", progress: 62.3 });
   });
 
+  it("starts yt-dlp with packaged binary paths when provided", () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir: "/tmp/downloads",
+      store,
+      spawn,
+      binaryPaths: {
+        ytDlp: "/opt/bin/yt-dlp",
+        ffmpeg: "/opt/ffmpeg/ffmpeg"
+      }
+    });
+
+    expect(spawn).toHaveBeenCalledWith(
+      "/opt/bin/yt-dlp",
+      expect.arrayContaining(["--ffmpeg-location", "/opt/ffmpeg/ffmpeg"]),
+      expect.objectContaining({
+        env: expect.objectContaining({
+          PATH: expect.stringContaining("/opt/ffmpeg")
+        })
+      })
+    );
+  });
+
   it("updates completed jobs to the actual merged output file extension", async () => {
     const store = createJobStore(() => 1000);
     const job = store.create({ title: "Title" });

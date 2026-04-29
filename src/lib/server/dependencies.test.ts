@@ -11,6 +11,11 @@ vi.mock("node:child_process", () => ({
   execFile
 }));
 
+vi.mock("./binaries", () => ({
+  buildBinaryEnvironment: vi.fn(() => ({ PATH: "/opt/ffmpeg:/usr/bin" })),
+  resolveBinaryPath: vi.fn((command: string) => (command === "yt-dlp" ? "/opt/bin/yt-dlp" : command))
+}));
+
 import { checkBinary, checkDependencies, defaultCommandRunner } from "./dependencies";
 
 describe("checkBinary", () => {
@@ -59,9 +64,12 @@ describe("defaultCommandRunner", () => {
     });
 
     expect(execFile).toHaveBeenCalledWith(
-      "yt-dlp",
+      "/opt/bin/yt-dlp",
       ["--dump-single-json", "https://youtu.be/id"],
-      expect.objectContaining({ maxBuffer: 25 * 1024 * 1024 }),
+      expect.objectContaining({
+        env: { PATH: "/opt/ffmpeg:/usr/bin" },
+        maxBuffer: 25 * 1024 * 1024
+      }),
       expect.any(Function)
     );
   });

@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { buildBinaryEnvironment, resolveBinaryPath } from "./binaries";
 
 const COMMAND_MAX_BUFFER_BYTES = 25 * 1024 * 1024;
 
@@ -17,7 +18,10 @@ export type CommandRunner = (
 const execFileAsync = promisify(execFile);
 
 export const defaultCommandRunner: CommandRunner = async (command, args) => {
-  const { stdout, stderr } = await execFileAsync(command, args, {
+  const binaryName = command === "yt-dlp" || command === "ffmpeg" ? command : null;
+  const executable = binaryName ? resolveBinaryPath(binaryName) : command;
+  const { stdout, stderr } = await execFileAsync(executable, args, {
+    env: buildBinaryEnvironment(),
     maxBuffer: COMMAND_MAX_BUFFER_BYTES
   });
   return { stdout, stderr };

@@ -63,13 +63,16 @@ describe("buildDownloadArgs", () => {
       buildDownloadArgs({
         url: "https://youtu.be/id",
         formatId: "18",
-        outputTemplate: "downloads/file.%(ext)s"
+        outputTemplate: "downloads/file.%(ext)s",
+        ffmpegLocation: "/opt/ffmpeg/ffmpeg"
       })
     ).toEqual([
       "--newline",
       "--no-playlist",
       "-f",
       "18",
+      "--ffmpeg-location",
+      "/opt/ffmpeg/ffmpeg",
       "--merge-output-format",
       "mp4",
       "-o",

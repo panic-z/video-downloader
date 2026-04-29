@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { job, jobStore, startDownload } = vi.hoisted(() => {
   const job = {
@@ -35,9 +37,24 @@ vi.mock("@/lib/server/download-runner", () => ({
 import { POST } from "./route";
 
 describe("POST /api/downloads", () => {
+  const originalVercel = process.env.VERCEL;
+
   beforeEach(() => {
     vi.clearAllMocks();
     jobStore.create.mockReturnValue({ ...job });
+    if (originalVercel === undefined) {
+      delete process.env.VERCEL;
+    } else {
+      process.env.VERCEL = originalVercel;
+    }
+  });
+
+  afterEach(() => {
+    if (originalVercel === undefined) {
+      delete process.env.VERCEL;
+    } else {
+      process.env.VERCEL = originalVercel;
+    }
   });
 
   it("returns 400 for unsupported URLs", async () => {
@@ -113,6 +130,27 @@ describe("POST /api/downloads", () => {
       downloadDir: expect.stringMatching(/downloads$/),
       store: jobStore
     });
+  });
+
+  it("uses a writable temporary download directory on Vercel", async () => {
+    process.env.VERCEL = "1";
+
+    const response = await POST(new Request("http://localhost/api/downloads", {
+      method: "POST",
+      body: JSON.stringify({
+        url: "https://youtu.be/id",
+        formatId: "18",
+        title: "Title",
+        extension: "mp4"
+      })
+    }));
+
+    expect(response.status).toBe(200);
+    expect(startDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        downloadDir: path.join(tmpdir(), "video-downloader-downloads")
+      })
+    );
   });
 
   it("marks the job failed and returns a structured error when startup fails", async () => {

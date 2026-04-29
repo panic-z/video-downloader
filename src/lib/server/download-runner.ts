@@ -4,6 +4,12 @@ import path from "node:path";
 import { buildDownloadFileName } from "@/lib/video/filenames";
 import { parseDownloadProgress } from "@/lib/video/progress";
 import type { DownloadJob } from "@/lib/video/types";
+import {
+  buildBinaryEnvironment,
+  resolveBinaryPath,
+  resolveFfmpegLocation,
+  type BinaryPaths
+} from "./binaries";
 import type { createJobStore } from "./job-store";
 import { buildDownloadArgs } from "./yt-dlp";
 
@@ -69,8 +75,10 @@ export function startDownload(input: {
   downloadDir: string;
   store: JobStore;
   spawn?: SpawnFn;
+  binaryPaths?: BinaryPaths;
 }): void {
   const spawn = input.spawn ?? nodeSpawn;
+  const binaryPaths = input.binaryPaths;
   mkdirSync(input.downloadDir, { recursive: true });
 
   const baseName = buildDownloadFileName(input.job.title, input.job.jobId, input.extension);
@@ -80,7 +88,8 @@ export function startDownload(input: {
   const args = buildDownloadArgs({
     url: input.url,
     formatId: input.formatId,
-    outputTemplate
+    outputTemplate,
+    ffmpegLocation: resolveFfmpegLocation(binaryPaths)
   });
 
   input.store.update(input.job.jobId, {
@@ -90,7 +99,9 @@ export function startDownload(input: {
     progress: 0
   });
 
-  const child = spawn("yt-dlp", args) as ChildProcessWithoutNullStreams;
+  const child = spawn(resolveBinaryPath("yt-dlp", binaryPaths), args, {
+    env: buildBinaryEnvironment(process.env, binaryPaths)
+  }) as ChildProcessWithoutNullStreams;
   let stdoutLineBuffer = "";
   let errorOutput = "";
   let terminalStateSet = false;
