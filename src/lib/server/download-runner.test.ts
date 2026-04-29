@@ -22,17 +22,20 @@ describe("startDownload", () => {
     const job = store.create({ title: "Title" });
     const proc = childProcessMock();
     const spawn = vi.fn().mockReturnValue(proc);
+    const downloadDir = mkdtempSync(path.join(tmpdir(), "video-downloader-"));
 
     startDownload({
       job,
       url: "https://youtu.be/id",
       formatId: "18",
       extension: "mp4",
-      downloadDir: "/tmp/downloads",
+      downloadDir,
       store,
       spawn
     });
 
+    const initialJob = store.get(job.jobId);
+    writeFileSync(path.join(downloadDir, initialJob?.fileName ?? "missing.mp4"), "output");
     proc.stdout.emit("data", Buffer.from("[download]  50.0% of 10MiB\n"));
     proc.emit("close", 0);
 
@@ -69,6 +72,32 @@ describe("startDownload", () => {
       status: "completed",
       fileName: `${outputStem}.mp4`,
       filePath: path.join(downloadDir, `${outputStem}.mp4`)
+    });
+  });
+
+  it("marks a job failed when yt-dlp exits successfully without producing a file", async () => {
+    const store = createJobStore(() => 1000);
+    const job = store.create({ title: "Title" });
+    const proc = childProcessMock();
+    const spawn = vi.fn().mockReturnValue(proc);
+    const downloadDir = mkdtempSync(path.join(tmpdir(), "video-downloader-"));
+
+    startDownload({
+      job,
+      url: "https://youtu.be/id",
+      formatId: "18",
+      extension: "mp4",
+      downloadDir,
+      store,
+      spawn
+    });
+
+    proc.emit("close", 0);
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(store.get(job.jobId)).toMatchObject({
+      status: "failed",
+      error: "Download finished but the output file was not found."
     });
   });
 

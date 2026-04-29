@@ -10,7 +10,7 @@ import { buildDownloadArgs } from "./yt-dlp";
 type JobStore = ReturnType<typeof createJobStore>;
 type SpawnFn = typeof nodeSpawn;
 
-function resolveCompletedOutput(downloadDir: string, outputStem: string, fallbackPath: string) {
+function resolveCompletedOutput(downloadDir: string, outputStem: string) {
   try {
     const match = readdirSync(downloadDir, { withFileTypes: true })
       .filter((entry) => entry.isFile() && path.parse(entry.name).name === outputStem)
@@ -24,16 +24,10 @@ function resolveCompletedOutput(downloadDir: string, outputStem: string, fallbac
       };
     }
   } catch {
-    return {
-      fileName: path.basename(fallbackPath),
-      filePath: fallbackPath
-    };
+    return null;
   }
 
-  return {
-    fileName: path.basename(fallbackPath),
-    filePath: fallbackPath
-  };
+  return null;
 }
 
 export function startDownload(input: {
@@ -96,8 +90,16 @@ export function startDownload(input: {
 
   child.on("close", (code) => {
     if (code === 0) {
-      const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem, expectedPath);
-      setTerminalState({ status: "completed", progress: 100, ...completedOutput });
+      const completedOutput = resolveCompletedOutput(input.downloadDir, outputStem);
+      if (completedOutput) {
+        setTerminalState({ status: "completed", progress: 100, ...completedOutput });
+        return;
+      }
+
+      setTerminalState({
+        status: "failed",
+        error: "Download finished but the output file was not found."
+      });
       return;
     }
 
